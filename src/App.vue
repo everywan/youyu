@@ -9,7 +9,7 @@
       />
       <template v-else-if="data && snapshot">
         <section class="app-screen">
-          <HomePage v-if="activeTab === 'home'" :data="data" :snapshot="snapshot" @navigate="activeTab = $event" />
+          <HomePage v-if="activeTab === 'home'" :data="data" :snapshot="snapshot" />
           <EntryPage v-else-if="activeTab === 'entry'" :data="data" @save="saveData" />
           <ScenarioPage v-else-if="activeTab === 'scenario'" :data="data" :snapshot="snapshot" @save="saveData" />
           <SettingsPage v-else :data="data" :import-json="importJson" @save="saveData" @replace="replaceData" />
@@ -98,8 +98,13 @@ async function handleOnboardingComplete(next: AppDataPackage) {
 }
 
 function isEmptyStart(value: AppDataPackage): boolean {
+  const nonCoreAssets = value.assets.filter((asset) => !['现金余额', '公积金余额'].includes(asset.name))
+  const coreAssetAmount = value.assets
+    .filter((asset) => ['现金余额', '公积金余额'].includes(asset.name))
+    .reduce((total, asset) => total + asset.amount, 0)
   return (
-    value.assets.length === 0 &&
+    nonCoreAssets.length === 0 &&
+    coreAssetAmount === 0 &&
     value.liabilities.length === 0 &&
     value.recurringCashflows.length === 0 &&
     value.oneTimeCashflows.length === 0 &&

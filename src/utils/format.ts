@@ -8,9 +8,9 @@ export function formatNumber(value: number): string {
   return formatCompactNumber(value)
 }
 
-export function formatPercent(value: number): string {
+export function formatPercent(value: number, fractionDigits = 0): string {
   if (!Number.isFinite(value)) return '待录入'
-  return `${Math.round(value * 100)}%`
+  return `${(value * 100).toFixed(fractionDigits)}%`
 }
 
 export function formatYears(value: SupportYearsResult): string {
@@ -21,7 +21,7 @@ export function formatYears(value: SupportYearsResult): string {
 }
 
 export function formatFreedomTime(value: FreedomTimeResult): string {
-  if (value.status === 'achieved') return '已达成'
+  if (value.status === 'achieved') return '当前收益已覆盖'
   if (value.status === 'projected') return value.targetDateLabel ?? `${value.months} 个月`
   if (value.status === 'missing_data') return '待补齐'
   return '不可达'

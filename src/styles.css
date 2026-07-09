@@ -120,6 +120,10 @@ textarea {
   margin-bottom: 12px;
 }
 
+.section-heading.compact {
+  align-items: flex-start;
+}
+
 .section-title {
   margin-top: 3px;
   color: #172033;
@@ -290,6 +294,76 @@ textarea {
   text-align: right;
 }
 
+.projection-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.formula-grid div {
+  min-width: 0;
+  border: 1px solid #e5eaf1;
+  border-radius: 8px;
+  padding: 9px;
+  background: #fbfdff;
+}
+
+.formula-grid span,
+.formula-grid strong {
+  display: block;
+}
+
+.formula-grid span {
+  color: #7a8599;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.formula-grid strong {
+  margin-top: 4px;
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.projection-rule {
+  margin: 0;
+  border-left: 3px solid #8bbde8;
+  padding-left: 10px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.projection-steps {
+  border-top: 1px solid #eef2f7;
+}
+
+.projection-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.projection-step:last-child {
+  border-bottom: 0;
+}
+
+.projection-step.covered .row-title,
+.projection-step.covered .row-side {
+  color: #2f855a;
+}
+
 .asset-row {
   display: flex;
   align-items: center;
@@ -348,6 +422,31 @@ textarea {
   background: #ffffff;
 }
 
+.budget-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+}
+
+.budget-summary-row .row-title {
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+.budget-summary-row .row-side {
+  color: #172033;
+  font-size: 20px;
+  font-weight: 820;
+}
+
+.budget-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+}
+
 .add-row {
   justify-content: center;
   color: #2468a9;
@@ -379,6 +478,10 @@ textarea {
 
 .modal-form {
   margin-top: 8px;
+}
+
+.modal-danger-action {
+  margin-top: 14px;
 }
 
 .insight {

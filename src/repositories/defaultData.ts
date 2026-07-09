@@ -1,47 +1,63 @@
-import type { AppDataPackage, Budget, BudgetLevel, FixedExpenseCategory, FixedExpenseItem } from '../domain/types'
+import type { AppDataPackage, Asset, Budget, BudgetLevel, FixedExpenseItem } from '../domain/types'
+import { createDefaultFixedExpenseItems, defaultBudgetMonthlyFixed } from '../domain/budgetPresets'
 
 const budgetNames: Record<BudgetLevel, string> = {
   basic: '基础预算',
   comfortable: '舒适预算',
   ideal: '理想预算',
 }
-const defaultBudgetItems: { category: FixedExpenseCategory; name: string }[] = [
-  { category: 'rent_mortgage', name: '房租/房贷' },
-  { category: 'dining', name: '餐饮' },
-  { category: 'utilities', name: '水电' },
-  { category: 'transport', name: '交通' },
-  { category: 'pocket_money', name: '零花钱' },
-]
-
 export function createDefaultAppData(): AppDataPackage {
   return {
     schemaVersion: 1,
     targets: [],
-    assets: [],
+    assets: createCoreAssets(),
     liabilities: [],
     budgets: [
-      createBudget('basic', 0),
-      createBudget('comfortable', 0),
-      createBudget('ideal', 0),
+      createBudget('basic'),
+      createBudget('comfortable'),
+      createBudget('ideal'),
     ],
     oneTimeCashflows: [],
     recurringCashflows: [],
     scenarios: [],
     settings: {
       currency: 'CNY',
-      defaultAnnualReturn: 0.03,
-      safeWithdrawalRate: 0.04,
+      inflationRate: 0.01,
       emergencyFundMonths: 6,
     },
     updatedAt: new Date().toISOString(),
   }
 }
 
-export function createBudget(level: BudgetLevel, monthlyFixed: number): Budget {
-  const fixedExpenseItems = createDefaultBudgetItems()
-  if (monthlyFixed > 0) {
-    fixedExpenseItems.push({ id: 'budget-total', category: 'custom', name: '预算总额', amount: monthlyFixed })
-  }
+export function createCoreAssets(updatedAt = new Date().toISOString()): Asset[] {
+  return [
+    {
+      id: 'asset-cash-balance',
+      name: '现金余额',
+      type: 'cash',
+      assetCategory: 'income_generating',
+      amount: 0,
+      isDisposable: true,
+      isLocked: false,
+      annualYieldRate: 0,
+      updatedAt,
+    },
+    {
+      id: 'asset-provident-fund-balance',
+      name: '公积金余额',
+      type: 'deposit',
+      assetCategory: 'income_generating',
+      amount: 0,
+      isDisposable: false,
+      isLocked: true,
+      annualYieldRate: 0,
+      updatedAt,
+    },
+  ]
+}
+
+export function createBudget(level: BudgetLevel, monthlyFixed = defaultBudgetMonthlyFixed[level]): Budget {
+  const fixedExpenseItems = createDefaultBudgetItems(monthlyFixed)
 
   return {
     id: `budget-${level}`,
@@ -58,11 +74,6 @@ export function createBudget(level: BudgetLevel, monthlyFixed: number): Budget {
   }
 }
 
-function createDefaultBudgetItems(): FixedExpenseItem[] {
-  return defaultBudgetItems.map((item) => ({
-    id: `budget-${item.category}`,
-    category: item.category,
-    name: item.name,
-    amount: 0,
-  }))
+function createDefaultBudgetItems(monthlyFixed: number): FixedExpenseItem[] {
+  return createDefaultFixedExpenseItems(monthlyFixed)
 }

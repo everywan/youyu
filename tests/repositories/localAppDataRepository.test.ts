@@ -26,14 +26,13 @@ describe('LocalAppDataRepository', () => {
     const reloaded = await repository.loadAppData()
 
     expect(imported.schemaVersion).toBe(1)
-    expect(reloaded.assets).toHaveLength(1)
-    expect(reloaded.assets[0].name).toBe('货币基金')
+    expect(reloaded.assets.map((asset) => asset.name)).toEqual(expect.arrayContaining(['现金余额', '公积金余额', '货币基金']))
   })
 
   it('rejects malformed restore data without replacing the current package', async () => {
     const repository = new LocalAppDataRepository('test-app-data')
     const data = createDefaultAppData()
-    data.budgets[0].fixedExpenseItems.push({ id: 'custom-budget', category: 'custom', name: '预算总额', amount: 5_000 })
+    data.budgets[0].fixedExpenseItems = [{ id: 'custom-budget', category: 'custom', name: '预算总额', amount: 5_000 }]
     data.budgets[0].monthlyFixed = 5_000
     await repository.saveAppData(data)
 
@@ -142,6 +141,116 @@ describe('LocalAppDataRepository', () => {
     const data = createDefaultAppData()
 
     expect(data.budgets[0].fixedExpenseMode).toBe('items')
-    expect(data.budgets[0].fixedExpenseItems.map((item) => item.name)).toEqual(['房租/房贷', '餐饮', '水电', '交通', '零花钱'])
+    expect(data.budgets.map((budget) => budget.monthlyFixed)).toEqual([4_000, 8_000, 10_000])
+    expect(data.budgets[0].fixedExpenseItems.map((item) => item.name)).toEqual([
+      '汇总项',
+      '餐饮',
+      '房租房贷',
+      '水电',
+      '娱乐',
+    ])
+    expect(data.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '汇总项', amount: 4_000 })
+  })
+
+  it('upgrades existing old default budget rows to the current presets', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const legacyData = createDefaultAppData()
+    const rawLegacyData = {
+      ...legacyData,
+      budgets: legacyData.budgets.map((budget) => ({
+        ...budget,
+        fixedExpenseItems: [
+          { id: 'budget-rent_mortgage', category: 'rent_mortgage', name: '房租/房贷', amount: 3_000 },
+          { id: 'budget-dining', category: 'dining', name: '餐饮', amount: 2_000 },
+          { id: 'budget-utilities', category: 'utilities', name: '水电', amount: 200 },
+          { id: 'budget-transport', category: 'transport', name: '交通', amount: 400 },
+          { id: 'budget-pocket_money', category: 'pocket_money', name: '零花钱', amount: 500 },
+        ],
+      })),
+    }
+    localStorage.setItem('test-app-data', JSON.stringify(rawLegacyData))
+
+    const reloaded = await repository.loadAppData()
+
+    expect(reloaded.budgets[0].fixedExpenseItems.map((item) => item.name)).toEqual([
+      '餐饮',
+      '房租房贷',
+      '水电',
+      '娱乐',
+      '交通',
+      '零花钱',
+    ])
+    expect(reloaded.budgets[0].fixedExpenseItems.find((item) => item.category === 'utilities')?.amount).toBe(200)
+    expect(reloaded.budgets[0].fixedExpenseItems.find((item) => item.name === '交通')).toMatchObject({ category: 'custom', amount: 400 })
+    expect(reloaded.budgets[0].monthlyFixed).toBe(6_100)
+  })
+
+  it('adds default summary rows to existing empty preset budgets', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const data = createDefaultAppData()
+    data.budgets = data.budgets.map((budget) => ({
+      ...budget,
+      monthlyFixed: 0,
+      fixedExpenseItems: budget.fixedExpenseItems.filter((item) => item.name !== '汇总项').map((item) => ({ ...item, amount: 0 })),
+    }))
+    localStorage.setItem('test-app-data', JSON.stringify(data))
+
+    const reloaded = await repository.loadAppData()
+
+    expect(reloaded.budgets.map((budget) => budget.monthlyFixed)).toEqual([4_000, 8_000, 10_000])
+    expect(reloaded.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '汇总项', amount: 4_000 })
+  })
+
+  it('keeps deleted current budget preset rows deleted after reload', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const data = createDefaultAppData()
+    data.budgets = data.budgets.map((budget) => ({
+      ...budget,
+      fixedExpenseItems: budget.fixedExpenseItems.filter((item) => item.category !== 'commute' && item.category !== 'insurance'),
+    }))
+
+    await repository.saveAppData(data)
+    const reloaded = await repository.loadAppData()
+
+    expect(reloaded.budgets[0].fixedExpenseItems.some((item) => item.category === 'commute')).toBe(false)
+    expect(reloaded.budgets[0].fixedExpenseItems.some((item) => item.category === 'insurance')).toBe(false)
+    expect(reloaded.budgets[0].monthlyFixed).toBe(4_000)
+  })
+
+  it('creates default fixed assets and migrates CPI setting without restoring deleted assets', async () => {
+    const defaults = createDefaultAppData()
+
+    expect(defaults.assets.map((asset) => asset.name)).toEqual(['现金余额', '公积金余额'])
+    expect(defaults.settings.inflationRate).toBe(0.01)
+    expect('defaultAnnualReturn' in defaults.settings).toBe(false)
+
+    const repository = new LocalAppDataRepository('test-app-data')
+    const legacyData = createDefaultAppData()
+    const rawLegacyData = {
+      ...legacyData,
+      assets: [],
+      settings: {
+        currency: 'CNY',
+        defaultAnnualReturn: 0.03,
+        emergencyFundMonths: 6,
+      },
+    }
+    localStorage.setItem('test-app-data', JSON.stringify(rawLegacyData))
+
+    const reloaded = await repository.loadAppData()
+
+    expect(reloaded.assets.map((asset) => asset.name)).toEqual([])
+    expect(reloaded.settings.inflationRate).toBe(0.01)
+    expect('defaultAnnualReturn' in reloaded.settings).toBe(false)
+  })
+
+  it('removes assets without restoring fixed asset rows on reload', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    await repository.saveAppData(createDefaultAppData())
+
+    await repository.removeAsset('asset-cash-balance')
+    const reloaded = await repository.loadAppData()
+
+    expect(reloaded.assets.map((asset) => asset.name)).toEqual(['公积金余额'])
   })
 })

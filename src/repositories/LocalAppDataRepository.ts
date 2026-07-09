@@ -1,4 +1,12 @@
 import { calculateDashboard } from '../domain/calculations'
+import {
+  createSummaryFixedExpenseItem,
+  defaultBudgetMonthlyFixed,
+  fixedExpenseCategories,
+  normalizeFixedExpenseCategory,
+  reconcilePresetFixedExpenseItems,
+  shouldUpgradePresetFixedExpenseItems,
+} from '../domain/budgetPresets'
 import type {
   AppDataPackage,
   AppSettings,
@@ -6,7 +14,6 @@ import type {
   AssetCategory,
   Budget,
   DashboardSnapshot,
-  FixedExpenseCategory,
   FixedExpenseItem,
   FreedomTarget,
   Liability,
@@ -26,7 +33,6 @@ import type {
 import { createDefaultAppData } from './defaultData'
 
 const supportedSchemaVersion = 1
-const fixedExpenseCategories: FixedExpenseCategory[] = ['rent_mortgage', 'dining', 'utilities', 'transport', 'pocket_money', 'custom']
 const assetCategories: AssetCategory[] = ['income_generating', 'non_income', 'durable']
 
 export class LocalAppDataRepository
@@ -223,38 +229,65 @@ function normalizeV1Shape(value: Record<string, unknown>): Record<string, unknow
       ? next.monthlyCashflows.map((cashflow) => monthlyCashflowToRecurring(cashflow))
       : []
   }
+  next.settings = normalizeSettingsShape(next.settings)
 
   return next
+}
+
+function normalizeSettingsShape(value: unknown): AppSettings {
+  const settings = isRecord(value) ? value : {}
+  return {
+    currency: 'CNY',
+    inflationRate: Number(settings.inflationRate ?? 0.01),
+    emergencyFundMonths: Number(settings.emergencyFundMonths ?? 6),
+  }
 }
 
 function normalizeAssetShape(value: unknown): unknown {
   if (!isRecord(value)) return value
   const assetCategory = assetCategories.includes(value.assetCategory as AssetCategory) ? value.assetCategory : 'income_generating'
+  const { annualCashflow: _legacyAnnualCashflow, ...asset } = value
 
   return {
-    ...value,
+    ...asset,
     assetCategory,
-    annualCashflow: assetCategory === 'income_generating' ? value.annualCashflow : 0,
   }
 }
 
 function normalizeBudgetShape(value: unknown): unknown {
   if (!isRecord(value)) return value
 
-  const existingItems = Array.isArray(value.fixedExpenseItems) ? value.fixedExpenseItems.map((item) => normalizeFixedExpenseItem(item)) : []
+  const rawExistingItems = Array.isArray(value.fixedExpenseItems) ? value.fixedExpenseItems : undefined
+  const existingItems = rawExistingItems ? rawExistingItems.map((item) => normalizeFixedExpenseItem(item)) : []
   const legacyItems = legacyBudgetItems(value)
-  const fixedExpenseItems = existingItems.length > 0 ? existingItems : legacyItems
-  const monthlyFixed = fixedExpenseItems.reduce((total, item) => total + item.amount, 0)
+  const fixedExpenseItems = rawExistingItems
+    ? shouldUpgradePresetFixedExpenseItems(rawExistingItems.map((item) => (isRecord(item) ? item : {})))
+      ? reconcilePresetFixedExpenseItems(existingItems)
+      : existingItems
+    : legacyItems
+  const fixedExpenseItemsWithDefaults = addDefaultSummaryItemIfEmptyPresetBudget(value, fixedExpenseItems)
+  const monthlyFixed = fixedExpenseItemsWithDefaults.reduce((total, item) => total + item.amount, 0)
 
   return {
     ...value,
     monthlyFixed,
     fixedExpenseMode: 'items',
-    fixedExpenseItems,
+    fixedExpenseItems: fixedExpenseItemsWithDefaults,
     monthlyDaily: 0,
     monthlyFamily: 0,
     monthlyDurableCost: 0,
   }
+}
+
+function addDefaultSummaryItemIfEmptyPresetBudget(value: Record<string, unknown>, items: FixedExpenseItem[]): FixedExpenseItem[] {
+  if (!Array.isArray(value.fixedExpenseItems) || items.length === 0) return items
+  if (items.some((item) => item.amount > 0 || item.name === '汇总项')) return items
+  if (items.every((item) => item.category === 'custom')) return items
+
+  const level = value.level
+  if (level !== 'basic' && level !== 'comfortable' && level !== 'ideal') return items
+
+  return [createSummaryFixedExpenseItem(defaultBudgetMonthlyFixed[level]), ...items]
 }
 
 function legacyBudgetItems(value: Record<string, unknown>): FixedExpenseItem[] {
@@ -280,7 +313,7 @@ function legacyBudgetItem(id: string, name: string, rawAmount: unknown): FixedEx
 
 function normalizeFixedExpenseItem(value: unknown): FixedExpenseItem {
   const item = isRecord(value) ? value : {}
-  const category = fixedExpenseCategories.includes(item.category as FixedExpenseCategory) ? (item.category as FixedExpenseCategory) : 'custom'
+  const category = normalizeFixedExpenseCategory(item.category, item.name)
 
   return {
     id: typeof item.id === 'string' && item.id.trim() ? item.id : `fixed-${category}`,
@@ -320,7 +353,6 @@ function validateAmounts(data: AppDataPackage): void {
       throw new Error('预留资产不能大于资产金额')
     }
     assertNonNegative(asset.annualYieldRate ?? 0, '收益率')
-    assertNonNegative(asset.annualCashflow ?? 0, '年被动现金流')
   }
 
   for (const liability of data.liabilities) {
@@ -361,10 +393,12 @@ function validateAmounts(data: AppDataPackage): void {
     if (cashflow.endMonth && !/^\d{4}-\d{2}$/.test(cashflow.endMonth)) {
       throw new Error('结束月份格式必须是 YYYY-MM')
     }
+    if (cashflow.lastSalaryAssetMonth && !/^\d{4}-\d{2}$/.test(cashflow.lastSalaryAssetMonth)) {
+      throw new Error('工资入账月份格式必须是 YYYY-MM')
+    }
     assertNonNegative(cashflow.activeIncome, '主动收入')
     if (cashflow.salaryInput) {
       assertNonNegative(cashflow.salaryInput.monthlySalary, '月工资')
-      assertNonNegative(cashflow.salaryInput.annualBonusMonths, '年终奖月数')
       assertNonNegative(cashflow.salaryInput.providentFundRate, '公积金比例')
       assertNonNegative(cashflow.salaryInput.providentFundBaseCap, '公积金基数上限')
     }
@@ -376,8 +410,7 @@ function validateAmounts(data: AppDataPackage): void {
     assertNonNegative(cashflow.durableCostAllocated, '耐用消费摊销')
   }
 
-  assertNonNegative(data.settings.defaultAnnualReturn, '默认预期年化收益率')
-  assertNonNegative(data.settings.safeWithdrawalRate, '安全提款率')
+  assertNonNegative(data.settings.inflationRate, 'CPI')
   assertNonNegative(data.settings.emergencyFundMonths, '应急金月数')
 }
 

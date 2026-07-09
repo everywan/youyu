@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { createDefaultFixedExpenseItems } from '../domain/budgetPresets'
 import type { AppDataPackage, FreedomTarget } from '../domain/types'
 import { createId, formatCurrency, monthNow } from '../utils/format'
 
@@ -107,10 +108,7 @@ function next() {
     ...budget,
     monthlyFixed: budgetAmount(budget.level),
     fixedExpenseMode: 'items' as const,
-    fixedExpenseItems:
-      budgetAmount(budget.level) > 0
-        ? [{ id: createId('budget-item'), category: 'custom' as const, name: '预算总额', amount: budgetAmount(budget.level) }]
-        : [],
+    fixedExpenseItems: createDefaultFixedExpenseItems(budgetAmount(budget.level)),
     monthlyDaily: 0,
     monthlyFamily: 0,
     monthlyDurableCost: 0,
@@ -122,6 +120,7 @@ function next() {
     assets:
       assetAmount.value > 0
         ? [
+            ...props.data.assets,
             {
               id: createId('asset'),
               name: '当前收益型资产',
@@ -131,7 +130,7 @@ function next() {
               isDisposable: true,
               isLocked: false,
               reservedAmount: reservedAmount.value,
-              annualCashflow: passiveIncome.value * 12,
+              annualYieldRate: 0,
               updatedAt: new Date().toISOString(),
             },
           ]

@@ -11,8 +11,7 @@
       <div class="section-label">基础参数</div>
       <div class="form-grid">
         <a-input value="CNY" disabled addon-before="默认货币" />
-        <a-input-number v-model:value="defaultAnnualReturnPercent" :min="0" :step="0.1" :controls="false" addon-before="默认年化" addon-after="%" style="width: 100%" />
-        <a-input-number v-model:value="safeWithdrawalRatePercent" :min="0" :step="0.1" :controls="false" addon-before="安全提款" addon-after="%" style="width: 100%" />
+        <a-input-number v-model:value="inflationRatePercent" :min="0" :step="0.1" :controls="false" addon-before="CPI" addon-after="%" style="width: 100%" />
         <a-input-number v-model:value="settings.emergencyFundMonths" :min="0" :controls="false" addon-before="应急金月数" style="width: 100%" />
       </div>
       <div class="sticky-actions">
@@ -71,17 +70,10 @@ watch(
   (next) => Object.assign(settings, next),
 )
 
-const defaultAnnualReturnPercent = computed({
-  get: () => Math.round(settings.defaultAnnualReturn * 1000) / 10,
+const inflationRatePercent = computed({
+  get: () => Math.round(settings.inflationRate * 1000) / 10,
   set: (value: number) => {
-    settings.defaultAnnualReturn = value / 100
-  },
-})
-
-const safeWithdrawalRatePercent = computed({
-  get: () => Math.round(settings.safeWithdrawalRate * 1000) / 10,
-  set: (value: number) => {
-    settings.safeWithdrawalRate = value / 100
+    settings.inflationRate = value / 100
   },
 })
 

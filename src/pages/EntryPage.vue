@@ -29,7 +29,7 @@
             <strong>{{ formatCurrency(assetTotal) }}</strong>
           </div>
           <div>
-            <span>年现金流</span>
+            <span>年资产收益</span>
             <strong>{{ formatCurrency(assetAnnualCashflow) }}</strong>
           </div>
           <div>
@@ -41,8 +41,10 @@
         <button v-for="asset in displayAssets" :key="asset.id" class="asset-row row-button" type="button" @click="editAsset(asset)">
           <span class="asset-mark income" />
           <div class="row-main">
-            <div class="row-title">{{ asset.name }}</div>
-            <div class="row-description">{{ assetTypeLabel(asset.type) }} · {{ asset.isLocked ? '不可动用' : '可动用' }} · 年现金流 {{ formatCurrency(asset.annualCashflow ?? 0) }}</div>
+            <div class="row-title"><span class="tag">{{ assetCategoryLabel(asset.assetCategory) }}</span>{{ asset.name }}</div>
+            <div class="row-description">
+              {{ assetTypeLabel(asset.type) }} · {{ asset.isLocked ? '不可动用' : '可动用' }} · 年化 {{ formatPercent(asset.annualYieldRate ?? 0, 2) }} · 年收益 {{ formatCurrency(assetAnnualIncome(asset)) }}
+            </div>
           </div>
           <div class="row-side">{{ formatCurrency(asset.amount) }}</div>
         </button>
@@ -74,7 +76,7 @@
         <button v-for="liability in data.liabilities" :key="liability.id" class="asset-row row-button" type="button" @click="editLiability(liability)">
           <span class="asset-mark liability" />
           <div class="row-main">
-            <div class="row-title">{{ liability.name }}</div>
+            <div class="row-title"><span class="tag">{{ liabilityTypeLabel(liability.type) }}</span>{{ liability.name }}</div>
             <div class="row-description">{{ liabilityTypeLabel(liability.type) }} · 月供 {{ formatCurrency(liability.monthlyPayment ?? 0) }}</div>
           </div>
           <div class="row-side">{{ formatCurrency(liability.balance) }}</div>
@@ -103,7 +105,7 @@
         <button v-for="asset in durableAssets" :key="asset.id" class="asset-row row-button" type="button" @click="editAsset(asset)">
           <span class="asset-mark durable" />
           <div class="row-main">
-            <div class="row-title">{{ asset.name }}</div>
+            <div class="row-title"><span class="tag">{{ assetCategoryLabel(asset.assetCategory) }}</span>{{ asset.name }}</div>
             <div class="row-description">{{ assetTypeLabel(asset.type) }}</div>
           </div>
           <div class="row-side">{{ formatCurrency(asset.amount) }}</div>
@@ -114,19 +116,24 @@
 
     <section v-else-if="section === 'budgets'" class="page">
       <div v-for="budget in budgetDrafts" :key="budget.level" class="panel">
-        <div class="section-label">{{ budget.name }}</div>
-        <div class="form-grid">
-          <div class="full-span metric-note">月预算合计：{{ formatCurrency(monthlyFixedExpense(budget)) }}</div>
+        <button class="budget-summary-row row-button" type="button" @click="toggleBudgetDetails(budget.level)">
+          <div class="row-main">
+            <div class="section-label">{{ budget.name }}</div>
+            <div class="row-title">月总支出</div>
+            <div class="row-description">年预算支出 {{ formatCurrency(annualBudget(budget)) }} · {{ isBudgetExpanded(budget.level) ? '收起明细' : '点击展开明细' }}</div>
+          </div>
+          <div class="row-side">{{ formatCurrency(monthlyFixedExpense(budget)) }}</div>
+        </button>
+        <div v-if="isBudgetExpanded(budget.level)" class="form-grid budget-detail">
           <div v-for="item in budget.fixedExpenseItems" :key="item.id" class="budget-item-row full-span">
             <a-input v-model:value="item.name" placeholder="预算项" />
             <a-input-number v-model:value="item.amount" :min="0" :controls="false" placeholder="金额" style="width: 100%" />
-            <a-button v-if="item.category === 'custom'" size="small" danger @click="removeBudgetItem(budget, item.id)">删除</a-button>
+            <a-button size="small" danger @click="removeBudgetItem(budget, item.id)">删除</a-button>
           </div>
           <a-button class="full-span" @click="addCustomBudgetItem(budget)">+ 新增自定义项</a-button>
           <a-input-number v-model:value="budget.annualLargeExpense" :min="0" :controls="false" addon-before="年度大额" style="width: 100%" />
           <a-input-number v-model:value="budget.annualReserve" :min="0" :controls="false" addon-before="年度预留" style="width: 100%" />
         </div>
-        <div class="metric-note">年预算支出：{{ formatCurrency(annualBudget(budget)) }}</div>
       </div>
       <div class="sticky-actions">
         <a-button type="primary" block @click="saveBudgets">保存三档预算</a-button>
@@ -156,10 +163,14 @@
         <a-input-number v-model:value="assetForm.amount" class="full-span" :min="0" :controls="false" inputmode="decimal" addon-before="金额" style="width: 100%" />
         <template v-if="assetForm.assetCategory === 'income_generating'">
           <a-input-number v-model:value="assetForm.reservedAmount" :min="0" :max="assetForm.amount" :controls="false" addon-before="预留" style="width: 100%" />
-          <a-input-number v-model:value="assetForm.annualCashflow" :min="0" :controls="false" addon-before="年现金流" style="width: 100%" />
+          <a-input-number v-model:value="assetForm.annualYieldRate" :min="0" :step="0.01" :precision="2" :controls="false" addon-before="年化收益率" addon-after="%" style="width: 100%" />
+          <div class="full-span metric-note">自动年收益：{{ formatCurrency(assetFormAnnualIncome) }}</div>
           <a-checkbox v-model:checked="assetForm.isLocked">不可动用</a-checkbox>
         </template>
       </div>
+      <a-popconfirm v-if="editingAssetId" title="确认删除这个资产？" ok-text="删除" cancel-text="取消" @confirm="removeAsset(editingAssetId)">
+        <a-button danger block class="modal-danger-action">删除资产</a-button>
+      </a-popconfirm>
     </a-modal>
 
     <a-modal v-model:open="liabilityModalOpen" :title="editingLiabilityId ? '编辑负债' : '新增负债'" ok-text="保存" cancel-text="取消" @ok="saveLiability">
@@ -188,7 +199,6 @@
           <a-input v-model:value="recurringForm.endMonth" placeholder="结束，可空" />
           <template v-if="cashflowFormKind === 'salary'">
             <a-input-number v-model:value="recurringForm.salaryInput.monthlySalary" class="full-span" :min="0" :controls="false" addon-before="月工资" addon-after="元" style="width: 100%" />
-            <a-input-number v-model:value="recurringForm.salaryInput.annualBonusMonths" :min="0" :step="0.5" :controls="false" addon-before="年终奖" addon-after="月" style="width: 100%" />
             <a-select v-model:value="recurringForm.salaryInput.providentFundCity" :options="providentFundCityOptions" @change="syncProvidentFundBaseCap" />
             <a-input-number v-model:value="recurringForm.salaryInput.providentFundBaseCap" class="full-span" :min="0" :controls="false" addon-before="公积金基数上限" style="width: 100%" />
             <a-input-number v-model:value="providentFundRatePercent" :min="0" :max="100" :step="0.5" :controls="false" addon-before="公积金" addon-after="%" style="width: 100%" />
@@ -202,6 +212,23 @@
             <a-input-number v-model:value="recurringForm.durableCostAllocated" :min="0" :controls="false" addon-before="耐用摊销" style="width: 100%" />
           </template>
           <a-textarea v-model:value="recurringForm.note" class="full-span" placeholder="备注" :rows="2" />
+          <template v-if="cashflowFormKind === 'salary'">
+            <div class="full-span summary-strip compact-summary">
+              <div>
+                <span>本月税后</span>
+                <strong>{{ formatCurrency(salaryEstimate.monthlyTakeHomeIncome) }}</strong>
+              </div>
+              <div>
+                <span>本月个税</span>
+                <strong>{{ formatCurrency(salaryEstimate.monthlyIncomeTax) }}</strong>
+              </div>
+              <div>
+                <span>公积金入账</span>
+                <strong>{{ formatCurrency(salaryEstimate.monthlyProvidentFundIncome) }}</strong>
+              </div>
+            </div>
+            <div class="full-span metric-note">保存后会把本月税后工资加入“现金余额”，公积金加入“公积金余额”。年终奖请用一次性现金流单独录入。</div>
+          </template>
           <div class="full-span metric-note">当月自动结余：{{ formatCurrency(recurringSurplus) }}</div>
         </template>
       </div>
@@ -213,6 +240,8 @@
 import { computed, reactive, ref, watch } from 'vue'
 import {
   applyOneTimeCashflowToAssets,
+  applyRecurringSalaryIncomeToAssets,
+  calculateAssetAnnualIncome,
   calculateAnnualBudgetExpense,
   calculateMonthlyFixedExpense,
   calculateMonthlySurplus,
@@ -220,7 +249,9 @@ import {
   getProvidentFundBaseCap,
   providentFundCities,
 } from '../domain/calculations'
+import { addDefaultPresetRowsToLegacySingleItemBudget, fixedExpenseCategories, normalizeFixedExpenseCategory } from '../domain/budgetPresets'
 import {
+  assetCategoryLabel,
   assetCategoryOptions,
   assetTypeLabel,
   assetTypeOptions,
@@ -235,7 +266,7 @@ import type {
   Asset,
   AssetCategory,
   Budget,
-  FixedExpenseCategory,
+  BudgetLevel,
   FixedExpenseItem,
   Liability,
   OneTimeCashflow,
@@ -243,7 +274,7 @@ import type {
   RecurringCashflow,
   SalaryIncomeInput,
 } from '../domain/types'
-import { createId, formatCurrency, monthNow } from '../utils/format'
+import { createId, formatCurrency, formatPercent, monthNow } from '../utils/format'
 
 const props = defineProps<{ data: AppDataPackage }>()
 const emit = defineEmits<{ save: [data: AppDataPackage] }>()
@@ -271,8 +302,6 @@ const cashflowKindOptions: { value: CashflowKind; label: string }[] = [
   { value: 'expense', label: cashflowKindLabel('expense') },
   { value: 'one_time_income', label: cashflowKindLabel('one_time_income') },
 ]
-const fixedExpenseCategories: FixedExpenseCategory[] = ['rent_mortgage', 'dining', 'utilities', 'transport', 'pocket_money', 'custom']
-
 const editingAssetId = ref<string>()
 const editingLiabilityId = ref<string>()
 const editingRecurringId = ref<string>()
@@ -281,6 +310,7 @@ const liabilityModalOpen = ref(false)
 const cashflowModalOpen = ref(false)
 const cashflowFormKind = ref<CashflowKind>('salary')
 const budgetDrafts = ref<Budget[]>(normalizeBudgetDrafts(props.data.budgets))
+const expandedBudgetLevels = ref<BudgetLevel[]>([])
 
 const assetForm = reactive({
   name: '',
@@ -289,7 +319,7 @@ const assetForm = reactive({
   amount: 0,
   isLocked: false,
   reservedAmount: 0,
-  annualCashflow: 0,
+  annualYieldRate: 0,
 })
 const liabilityForm = reactive({
   name: '',
@@ -304,6 +334,7 @@ const recurringForm = reactive({
   endMonth: '',
   activeIncome: 0,
   salaryInput: defaultSalaryInput(),
+  lastSalaryAssetMonth: undefined as string | undefined,
   passiveIncome: 0,
   fixedExpense: 0,
   dailyExpense: 0,
@@ -330,7 +361,7 @@ watch(
 const displayAssets = computed(() => props.data.assets.filter((asset) => (asset.assetCategory ?? 'income_generating') !== 'durable'))
 const durableAssets = computed(() => props.data.assets.filter((asset) => asset.assetCategory === 'durable'))
 const assetTotal = computed(() => sum(displayAssets.value.map((asset) => asset.amount)))
-const assetAnnualCashflow = computed(() => sum(displayAssets.value.map((asset) => asset.annualCashflow ?? 0)))
+const assetAnnualCashflow = computed(() => sum(displayAssets.value.map((asset) => calculateAssetAnnualIncome(asset))))
 const liabilityTotal = computed(() => sum(props.data.liabilities.map((liability) => liability.balance)))
 const liabilityMonthlyPayment = computed(() => sum(props.data.liabilities.map((liability) => liability.monthlyPayment ?? 0)))
 const durableTotal = computed(() => sum(durableAssets.value.map((asset) => asset.amount)))
@@ -379,6 +410,7 @@ const recurringSurplus = computed(() =>
     durableCostAllocated: cashflowFormKind.value === 'expense' ? recurringForm.durableCostAllocated : 0,
   }),
 )
+const assetFormAnnualIncome = computed(() => (assetForm.assetCategory === 'income_generating' ? assetForm.amount * (assetForm.annualYieldRate / 100) : 0))
 
 function annualBudget(budget: Budget): number {
   return calculateAnnualBudgetExpense(budget)
@@ -386,6 +418,10 @@ function annualBudget(budget: Budget): number {
 
 function monthlyFixedExpense(budget: Budget): number {
   return calculateMonthlyFixedExpense(budget)
+}
+
+function assetAnnualIncome(asset: Asset): number {
+  return calculateAssetAnnualIncome(asset)
 }
 
 function openNewAsset(category: AssetCategory) {
@@ -409,7 +445,7 @@ function saveAsset() {
     isDisposable: isIncomeGenerating ? !assetForm.isLocked : false,
     isLocked: isIncomeGenerating ? assetForm.isLocked : false,
     reservedAmount: isIncomeGenerating ? assetForm.reservedAmount : 0,
-    annualCashflow: isIncomeGenerating ? assetForm.annualCashflow : 0,
+    annualYieldRate: isIncomeGenerating ? assetForm.annualYieldRate / 100 : 0,
     updatedAt: new Date().toISOString(),
   }
   emit('save', { ...props.data, assets: upsert(props.data.assets, asset) })
@@ -426,18 +462,20 @@ function editAsset(asset: Asset) {
     amount: asset.amount,
     isLocked: asset.isLocked,
     reservedAmount: asset.reservedAmount ?? 0,
-    annualCashflow: asset.annualCashflow ?? 0,
+    annualYieldRate: (asset.annualYieldRate ?? 0) * 100,
   })
   assetModalOpen.value = true
 }
 
 function removeAsset(id: string) {
   emit('save', { ...props.data, assets: props.data.assets.filter((asset) => asset.id !== id) })
+  assetModalOpen.value = false
+  resetAssetForm()
 }
 
 function resetAssetForm() {
   editingAssetId.value = undefined
-  Object.assign(assetForm, { name: '', type: 'fund', assetCategory: 'income_generating', amount: 0, isLocked: false, reservedAmount: 0, annualCashflow: 0 })
+  Object.assign(assetForm, { name: '', type: 'fund', assetCategory: 'income_generating', amount: 0, isLocked: false, reservedAmount: 0, annualYieldRate: 0 })
 }
 
 function openNewLiability() {
@@ -494,6 +532,22 @@ function removeBudgetItem(budget: Budget, id: string) {
   budget.fixedExpenseItems = budget.fixedExpenseItems.filter((item) => item.id !== id)
 }
 
+function toggleBudgetDetails(level: BudgetLevel) {
+  if (!isBudgetExpanded(level)) {
+    const budget = budgetDrafts.value.find((item) => item.level === level)
+    if (budget) {
+      budget.fixedExpenseItems = addDefaultPresetRowsToLegacySingleItemBudget(budget.fixedExpenseItems)
+    }
+  }
+  expandedBudgetLevels.value = isBudgetExpanded(level)
+    ? expandedBudgetLevels.value.filter((item) => item !== level)
+    : [...expandedBudgetLevels.value, level]
+}
+
+function isBudgetExpanded(level: BudgetLevel): boolean {
+  return expandedBudgetLevels.value.includes(level)
+}
+
 function openNewCashflow() {
   resetRecurringForm()
   resetOneTimeForm()
@@ -522,6 +576,7 @@ function saveRecurringCashflow() {
     endMonth: recurringForm.endMonth || undefined,
     activeIncome: isSalary ? monthlyTakeHomeIncome.value : 0,
     salaryInput: isSalary ? clone(recurringForm.salaryInput) : undefined,
+    lastSalaryAssetMonth: recurringForm.lastSalaryAssetMonth,
     passiveIncome: isPassive ? recurringForm.passiveIncome : 0,
     fixedExpense: isExpense ? recurringForm.fixedExpense : 0,
     dailyExpense: isExpense ? recurringForm.dailyExpense : 0,
@@ -530,7 +585,12 @@ function saveRecurringCashflow() {
     durableCostAllocated: isExpense ? recurringForm.durableCostAllocated : 0,
     note: recurringForm.note,
   }
-  emit('save', { ...props.data, recurringCashflows: upsert(props.data.recurringCashflows, cashflow) })
+  const salaryApplication = isSalary ? applyRecurringSalaryIncomeToAssets(props.data.assets, cashflow, monthNow()) : { assets: props.data.assets, cashflow }
+  emit('save', {
+    ...props.data,
+    recurringCashflows: upsert(props.data.recurringCashflows, salaryApplication.cashflow),
+    assets: salaryApplication.assets,
+  })
   cashflowModalOpen.value = false
   resetRecurringForm()
 }
@@ -558,6 +618,7 @@ function resetRecurringForm() {
     endMonth: '',
     activeIncome: 0,
     salaryInput: defaultSalaryInput(),
+    lastSalaryAssetMonth: undefined,
     passiveIncome: 0,
     fixedExpense: 0,
     dailyExpense: 0,
@@ -619,7 +680,6 @@ function calculateRecurringSurplus(cashflow: RecurringCashflow): number {
 function defaultSalaryInput(monthlySalary = 0): SalaryIncomeInput {
   return {
     monthlySalary,
-    annualBonusMonths: 0,
     providentFundRate: 0.12,
     providentFundBaseCap: getProvidentFundBaseCap('上海'),
     providentFundCity: '上海',
@@ -631,12 +691,18 @@ function upsert<T extends { id: string }>(items: T[], next: T): T[] {
 }
 
 function normalizeBudgetDrafts(budgets: Budget[]): Budget[] {
-  return budgets.map((budget) => normalizeBudgetForSave(budget))
+  return budgets.map((budget) => {
+    const normalized = normalizeBudgetForSave(budget)
+    return {
+      ...normalized,
+      fixedExpenseItems: addDefaultPresetRowsToLegacySingleItemBudget(normalized.fixedExpenseItems),
+    }
+  })
 }
 
 function normalizeBudgetForSave(budget: Budget): Budget {
   const next = clone(budget)
-  const fixedExpenseItems = next.fixedExpenseItems.length > 0 ? next.fixedExpenseItems : legacyBudgetItems(next)
+  const fixedExpenseItems = Array.isArray(next.fixedExpenseItems) ? next.fixedExpenseItems : legacyBudgetItems(next)
   next.fixedExpenseMode = 'items'
   next.fixedExpenseItems = normalizeFixedExpenseItems(fixedExpenseItems)
   next.monthlyFixed = calculateMonthlyFixedExpense(next)
@@ -649,10 +715,15 @@ function normalizeBudgetForSave(budget: Budget): Budget {
 function normalizeFixedExpenseItems(items: FixedExpenseItem[] = []): FixedExpenseItem[] {
   return items.map((item, index) => ({
     id: item.id || createId('budget-item'),
-    category: fixedExpenseCategories.includes(item.category) ? item.category : 'custom',
+    category: normalizedBudgetCategory(item),
     name: item.name?.trim() || `自定义项 ${index + 1}`,
     amount: Number(item.amount ?? 0),
   }))
+}
+
+function normalizedBudgetCategory(item: FixedExpenseItem) {
+  const category = normalizeFixedExpenseCategory(item.category, item.name)
+  return fixedExpenseCategories.includes(category) ? category : 'custom'
 }
 
 function legacyBudgetItems(budget: Budget): FixedExpenseItem[] {

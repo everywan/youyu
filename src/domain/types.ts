@@ -1,7 +1,18 @@
 export type BudgetLevel = 'basic' | 'comfortable' | 'ideal'
 export type AssetCategory = 'income_generating' | 'non_income' | 'durable'
 export type FixedExpenseMode = 'total' | 'items'
-export type FixedExpenseCategory = 'rent_mortgage' | 'dining' | 'utilities' | 'transport' | 'pocket_money' | 'custom'
+export type FixedExpenseCategory =
+  | 'dining'
+  | 'rent_mortgage'
+  | 'commute'
+  | 'utilities'
+  | 'communications'
+  | 'healthcare'
+  | 'insurance'
+  | 'family_support'
+  | 'leisure_shopping'
+  | 'pocket_money'
+  | 'custom'
 
 export type FixedExpenseItem = {
   id: string
@@ -34,6 +45,7 @@ export type Asset = {
   reservedAmount?: number
   reservePurpose?: string
   annualYieldRate?: number
+  /** @deprecated 年资产收益由 amount * annualYieldRate 自动计算。 */
   annualCashflow?: number
   updatedAt: string
 }
@@ -93,6 +105,7 @@ export type RecurringCashflow = {
   endMonth?: string
   activeIncome: number
   salaryInput?: SalaryIncomeInput
+  lastSalaryAssetMonth?: string
   passiveIncome: number
   fixedExpense: number
   dailyExpense: number
@@ -119,19 +132,17 @@ export type ProvidentFundCity =
 
 export type SalaryIncomeInput = {
   monthlySalary: number
-  annualBonusMonths: number
   providentFundRate: number
   providentFundBaseCap: number
   providentFundCity: ProvidentFundCity
 }
 
 export type SalaryIncomeEstimate = {
-  annualGrossIncome: number
-  annualIndividualProvidentFund: number
+  monthlyGrossIncome: number
+  monthlyIndividualProvidentFund: number
   monthlyProvidentFundIncome: number
-  annualTaxableIncome: number
-  annualIncomeTax: number
-  annualTakeHomeIncome: number
+  monthlyTaxableIncome: number
+  monthlyIncomeTax: number
   monthlyTakeHomeIncome: number
 }
 
@@ -140,7 +151,6 @@ export type Scenario = {
   name: string
   monthlyActiveIncome: number
   monthlyExpense: number
-  expectedAnnualReturn: number
   lockedAssetAmount: number
   reservedAssetAmount: number
   budgetLevel: BudgetLevel
@@ -148,8 +158,7 @@ export type Scenario = {
 
 export type AppSettings = {
   currency: 'CNY'
-  defaultAnnualReturn: number
-  safeWithdrawalRate: number
+  inflationRate: number
   emergencyFundMonths: number
 }
 
@@ -169,7 +178,7 @@ export type AppDataPackage = {
 export type BudgetSummary = {
   level: BudgetLevel
   annualBudgetExpense: number
-  passiveCoverageRate: number
+  assetIncomeCoverageRate: number
   annualFundingGap: number
 }
 
@@ -183,6 +192,36 @@ export type FreedomTimeResult = {
   months?: number
   targetDateLabel?: string
   reason?: string
+  explanation?: FreedomTimeExplanation
+}
+
+export type FreedomTimeExplanation = {
+  startingNetWorth: number
+  startingAssetBase: number
+  startingInvestableNetWorth: number
+  lockedAssetAmount: number
+  reservedAssetAmount: number
+  monthlyCashIncome: number
+  monthlyBudgetExpense: number
+  monthlyDebtPayment: number
+  monthlyInvestableCashflow: number
+  annualReturn: number
+  monthlyReturn: number
+  annualBudgetExpense: number
+  requiredInvestableNetWorth?: number
+  startingAnnualPassiveIncome: number
+  checkpoints: FreedomTimeCheckpoint[]
+  reachedStep?: FreedomTimeCheckpoint
+}
+
+export type FreedomTimeCheckpoint = {
+  month: number
+  monthLabel: string
+  assetBase: number
+  monthlyAssetIncome: number
+  annualPassiveIncome: number
+  annualBudgetExpense: number
+  covered: boolean
 }
 
 export type CustomTargetProgress = {
@@ -201,11 +240,12 @@ export type InsightMessage = {
 
 export type DashboardSnapshot = {
   freedomLevel: 'none' | BudgetLevel
+  incomeGeneratingAssetAmount: number
   incomeGeneratingNetWorth: number
   disposableAssets: number
   lockedAssetAmount: number
   reservedAssetAmount: number
-  annualPassiveCashflow: number
+  annualAssetIncome: number
   latestMonthlySurplus: number
   budgetSummaries: BudgetSummary[]
   supportYearsByBudget: Record<BudgetLevel, SupportYearsResult>
@@ -217,7 +257,7 @@ export type DashboardSnapshot = {
 
 export type NetWorthSummary = Pick<
   DashboardSnapshot,
-  'incomeGeneratingNetWorth' | 'disposableAssets' | 'lockedAssetAmount' | 'reservedAssetAmount' | 'annualPassiveCashflow'
+  'incomeGeneratingAssetAmount' | 'incomeGeneratingNetWorth' | 'disposableAssets' | 'lockedAssetAmount' | 'reservedAssetAmount' | 'annualAssetIncome'
 >
 
 export type ScenarioComparison = {
