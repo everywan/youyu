@@ -40,8 +40,8 @@
         <div class="metric-value">{{ formatCurrency(monthlyNetIncome) }}</div>
       </article>
       <article class="metric-card">
-        <div class="metric-label">赚 100 元需要</div>
-        <div class="metric-value">{{ laborHoursFor100Label }}(11h/天)</div>
+        <div class="metric-label">赚 100 元需要｜11h/天</div>
+        <div class="metric-value">{{ laborHoursFor100Label }}</div>
       </article>
     </section>
 
