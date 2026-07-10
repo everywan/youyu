@@ -21,19 +21,6 @@ export type FixedExpenseItem = {
   amount: number
 }
 
-export type FreedomTarget = {
-  id: string
-  name: string
-  level: BudgetLevel | 'custom'
-  linkedBudgetLevel?: BudgetLevel
-  targetAssetAmount?: number
-  targetMonthlyPassiveIncome?: number
-  requiresHouse?: boolean
-  requiresCar?: boolean
-  regionLabel?: string
-  priority: 'budget_coverage_first' | 'asset_or_passive_income'
-}
-
 export type Asset = {
   id: string
   name: string
@@ -98,6 +85,14 @@ export type OneTimeCashflow = {
   note?: string
 }
 
+export type AnnualBonusInput = {
+  enabled: boolean
+  payoutMonth: number
+  amountMode: 'gross' | 'net'
+  grossAmount: number
+  netAmount: number
+}
+
 export type RecurringCashflow = {
   id: string
   name: string
@@ -106,6 +101,8 @@ export type RecurringCashflow = {
   activeIncome: number
   salaryInput?: SalaryIncomeInput
   lastSalaryAssetMonth?: string
+  annualBonusInput?: AnnualBonusInput
+  lastBonusAssetYear?: number
   passiveIncome: number
   fixedExpense: number
   dailyExpense: number
@@ -164,7 +161,6 @@ export type AppSettings = {
 
 export type AppDataPackage = {
   schemaVersion: 1
-  targets: FreedomTarget[]
   assets: Asset[]
   liabilities: Liability[]
   budgets: Budget[]
@@ -224,14 +220,6 @@ export type FreedomTimeCheckpoint = {
   covered: boolean
 }
 
-export type CustomTargetProgress = {
-  targetId: string
-  name: string
-  assetProgressRate?: number
-  passiveIncomeProgressRate?: number
-  isCompleted: boolean
-}
-
 export type InsightMessage = {
   type: 'success' | 'warning' | 'risk' | 'info'
   title: string
@@ -250,7 +238,6 @@ export type DashboardSnapshot = {
   budgetSummaries: BudgetSummary[]
   supportYearsByBudget: Record<BudgetLevel, SupportYearsResult>
   freedomTimeByBudget: Record<BudgetLevel, FreedomTimeResult>
-  customTargetProgress: CustomTargetProgress[]
   insightMessages: InsightMessage[]
   updatedAt: string
 }

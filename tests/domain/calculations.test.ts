@@ -486,6 +486,17 @@ describe('financial domain calculations', () => {
   it('builds dashboard snapshot from raw app data', () => {
     const snapshot = calculateDashboard(
       appData({
+        targets: [
+          {
+            id: 'legacy-target',
+            name: '旧目标',
+            level: 'basic',
+            linkedBudgetLevel: 'basic',
+            targetAssetAmount: 100_000,
+            targetMonthlyPassiveIncome: 1_000,
+            priority: 'asset_or_passive_income',
+          },
+        ],
         assets: [
           {
             id: 'fund',
@@ -521,6 +532,7 @@ describe('financial domain calculations', () => {
     expect(snapshot.freedomLevel).toBe('none')
     expect(snapshot.latestMonthlySurplus).toBe(6_000)
     expect(snapshot.budgetSummaries[0].assetIncomeCoverageRate).toBeCloseTo(0.4)
+    expect(snapshot.customTargetProgress).toEqual([])
     expect(snapshot.insightMessages.length).toBeGreaterThan(0)
   })
 
@@ -677,6 +689,43 @@ describe('financial domain calculations', () => {
     expect(second.cashflow.lastSalaryAssetMonth).toBe('2026-07')
   })
 
+  it('applies an annual bonus to cash balance once per year in its payout month', () => {
+    const salaryRule = {
+      id: 'salary',
+      name: '工资',
+      startMonth: '2026-01',
+      activeIncome: 30_589,
+      salaryInput: {
+        monthlySalary: 40_000,
+        providentFundRate: 0.12,
+        providentFundBaseCap: getProvidentFundBaseCap('上海'),
+        providentFundCity: '上海' as const,
+      },
+      annualBonusInput: {
+        enabled: true,
+        payoutMonth: 12,
+        amountMode: 'net' as const,
+        grossAmount: 0,
+        netAmount: 50_000,
+      },
+      passiveIncome: 0,
+      fixedExpense: 0,
+      dailyExpense: 0,
+      familyExpense: 0,
+      annualExpenseAllocated: 0,
+      durableCostAllocated: 0,
+    }
+
+    const first = applyRecurringSalaryIncomeToAssets([], salaryRule, '2026-12', '2026-12-08T00:00:00.000Z')
+    const second = applyRecurringSalaryIncomeToAssets(first.assets, first.cashflow, '2026-12', '2026-12-08T00:00:00.000Z')
+    const third = applyRecurringSalaryIncomeToAssets(second.assets, second.cashflow, '2027-12', '2027-12-08T00:00:00.000Z')
+
+    expect(second.assets.find((asset) => asset.name === '现金余额')?.amount).toBeCloseTo(80_589)
+    expect(second.cashflow.lastBonusAssetYear).toBe(2026)
+    expect(third.assets.find((asset) => asset.name === '现金余额')?.amount).toBeCloseTo(161_178)
+    expect(third.cashflow.lastBonusAssetYear).toBe(2027)
+  })
+
   it('generates the current month cashflow from active recurring rules only once', () => {
     const generated = buildMonthlyCashflowFromRecurring(
       [
@@ -713,6 +762,36 @@ describe('financial domain calculations', () => {
     expect(generated?.activeIncome).toBe(20_000)
     expect(generated ? calculateBudgetSummary(budget('basic', 5_000), generated.passiveIncome).annualBudgetExpense : 0).toBe(60_000)
     expect(generated ? generated.activeIncome + generated.passiveIncome - generated.fixedExpense - generated.dailyExpense - generated.familyExpense - generated.annualExpenseAllocated - generated.durableCostAllocated : 0).toBe(11_000)
+  })
+
+  it('adds annual bonus to generated active income only in the payout month', () => {
+    const recurring = [
+      {
+        id: 'salary',
+        name: '工资',
+        startMonth: '2026-01',
+        activeIncome: 20_000,
+        annualBonusInput: {
+          enabled: true,
+          payoutMonth: 12,
+          amountMode: 'gross' as const,
+          grossAmount: 60_000,
+          netAmount: 0,
+        },
+        passiveIncome: 0,
+        fixedExpense: 0,
+        dailyExpense: 0,
+        familyExpense: 0,
+        annualExpenseAllocated: 0,
+        durableCostAllocated: 0,
+      },
+    ]
+
+    const november = buildMonthlyCashflowFromRecurring(recurring, '2026-11')
+    const december = buildMonthlyCashflowFromRecurring(recurring, '2026-12')
+
+    expect(november?.activeIncome).toBe(20_000)
+    expect(december?.activeIncome).toBe(80_000)
   })
 
   it('adds one-time cashflow amount to the matching asset by name and type', () => {

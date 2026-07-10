@@ -9,7 +9,6 @@ const budgetNames: Record<BudgetLevel, string> = {
 export function createDefaultAppData(): AppDataPackage {
   return {
     schemaVersion: 1,
-    targets: [],
     assets: createCoreAssets(),
     liabilities: [],
     budgets: [

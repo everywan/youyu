@@ -15,7 +15,6 @@ import type {
   Budget,
   DashboardSnapshot,
   FixedExpenseItem,
-  FreedomTarget,
   Liability,
   MonthlyCashflow,
   OneTimeCashflow,
@@ -28,7 +27,6 @@ import type {
   CashflowRepository,
   DashboardRepository,
   SettingsRepository,
-  TargetRepository,
 } from './AppDataRepository'
 import { createDefaultAppData } from './defaultData'
 
@@ -39,7 +37,6 @@ export class LocalAppDataRepository
   implements
     AppDataRepository,
     DashboardRepository,
-    TargetRepository,
     AssetRepository,
     BudgetRepository,
     CashflowRepository,
@@ -76,22 +73,6 @@ export class LocalAppDataRepository
 
   async getDashboardSnapshot(): Promise<DashboardSnapshot> {
     return calculateDashboard(await this.loadAppData())
-  }
-
-  async listTargets(): Promise<FreedomTarget[]> {
-    return (await this.loadAppData()).targets
-  }
-
-  async saveTarget(target: FreedomTarget): Promise<void> {
-    const data = await this.loadAppData()
-    data.targets = upsertById(data.targets, target)
-    await this.saveAppData(data)
-  }
-
-  async removeTarget(id: string): Promise<void> {
-    const data = await this.loadAppData()
-    data.targets = data.targets.filter((target) => target.id !== id)
-    await this.saveAppData(data)
   }
 
   async listAssets(): Promise<Asset[]> {
@@ -196,7 +177,7 @@ function parseAndValidate(json: string): AppDataPackage {
 
   const normalized = normalizeV1Shape(value)
 
-  for (const field of ['targets', 'assets', 'liabilities', 'budgets', 'oneTimeCashflows', 'recurringCashflows', 'scenarios'] as const) {
+  for (const field of ['assets', 'liabilities', 'budgets', 'oneTimeCashflows', 'recurringCashflows', 'scenarios'] as const) {
     if (!Array.isArray(normalized[field])) {
       throw new Error(`字段缺失：${field}`)
     }
@@ -396,11 +377,24 @@ function validateAmounts(data: AppDataPackage): void {
     if (cashflow.lastSalaryAssetMonth && !/^\d{4}-\d{2}$/.test(cashflow.lastSalaryAssetMonth)) {
       throw new Error('工资入账月份格式必须是 YYYY-MM')
     }
+    if (cashflow.lastBonusAssetYear !== undefined && (!Number.isInteger(cashflow.lastBonusAssetYear) || cashflow.lastBonusAssetYear < 0)) {
+      throw new Error('年终奖入账年份必须是非负整数')
+    }
     assertNonNegative(cashflow.activeIncome, '主动收入')
     if (cashflow.salaryInput) {
       assertNonNegative(cashflow.salaryInput.monthlySalary, '月工资')
       assertNonNegative(cashflow.salaryInput.providentFundRate, '公积金比例')
       assertNonNegative(cashflow.salaryInput.providentFundBaseCap, '公积金基数上限')
+    }
+    if (cashflow.annualBonusInput?.enabled) {
+      if (!Number.isInteger(cashflow.annualBonusInput.payoutMonth) || cashflow.annualBonusInput.payoutMonth < 1 || cashflow.annualBonusInput.payoutMonth > 12) {
+        throw new Error('年终奖发放月份必须是 1-12')
+      }
+      if (cashflow.annualBonusInput.amountMode !== 'gross' && cashflow.annualBonusInput.amountMode !== 'net') {
+        throw new Error('年终奖金额口径不支持')
+      }
+      assertNonNegative(cashflow.annualBonusInput.grossAmount, '年终奖总额')
+      assertNonNegative(cashflow.annualBonusInput.netAmount, '年终奖到手额')
     }
     assertNonNegative(cashflow.passiveIncome, '被动收入')
     assertNonNegative(cashflow.fixedExpense, '固定支出')

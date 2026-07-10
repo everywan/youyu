@@ -1,10 +1,10 @@
 import type {
   AppDataPackage,
+  AnnualBonusInput,
   Asset,
   Budget,
   BudgetLevel,
   BudgetSummary,
-  CustomTargetProgress,
   DashboardSnapshot,
   FreedomTimeResult,
   InsightMessage,
@@ -347,7 +347,6 @@ export function calculateDashboard(data: AppDataPackage, options: { currentMonth
     budgetSummaries,
     supportYearsByBudget,
     freedomTimeByBudget,
-    customTargetProgress: buildCustomTargetProgress(data, netWorth.annualAssetIncome),
     insightMessages: buildInsightMessages(data, netWorth, budgetSummaries, latestCashflow),
     updatedAt: data.updatedAt,
   }
@@ -360,7 +359,7 @@ export function buildMonthlyCashflowFromRecurring(rules: RecurringCashflow[], mo
   return {
     id: `generated-${month}`,
     month,
-    activeIncome: sum(activeRules.map((rule) => resolveRecurringActiveIncome(rule))),
+    activeIncome: sum(activeRules.map((rule) => resolveRecurringActiveIncome(rule, month))),
     passiveIncome: sum(activeRules.map((rule) => rule.passiveIncome)),
     fixedExpense: sum(activeRules.map((rule) => rule.fixedExpense)),
     dailyExpense: sum(activeRules.map((rule) => rule.dailyExpense)),
@@ -484,21 +483,47 @@ export function applySalaryIncomeToAssets(assets: Asset[], salaryInput: SalaryIn
   )
 }
 
+export function calculateAnnualBonusTakeHome(input?: AnnualBonusInput): number {
+  if (!input?.enabled) return 0
+  return input.amountMode === 'net' ? nonNegative(input.netAmount) : nonNegative(input.grossAmount)
+}
+
 export function applyRecurringSalaryIncomeToAssets(
   assets: Asset[],
   cashflow: RecurringCashflow,
   month: string,
   updatedAt = new Date().toISOString(),
 ): { assets: Asset[]; cashflow: RecurringCashflow } {
-  if (!cashflow.salaryInput || cashflow.lastSalaryAssetMonth === month) {
+  const year = yearFromMonth(month)
+  const shouldApplySalary = Boolean(cashflow.salaryInput) && cashflow.lastSalaryAssetMonth !== month
+  const shouldApplyBonus = isAnnualBonusPayoutMonth(cashflow.annualBonusInput, month) && cashflow.lastBonusAssetYear !== year
+
+  if (!shouldApplySalary && !shouldApplyBonus) {
     return { assets, cashflow }
   }
 
+  let nextAssets = assets
+  if (shouldApplySalary && cashflow.salaryInput) {
+    nextAssets = applySalaryIncomeToAssets(nextAssets, cashflow.salaryInput, updatedAt)
+  }
+  if (shouldApplyBonus) {
+    nextAssets = upsertCoreAssetAmount(nextAssets, {
+      id: 'asset-cash-balance',
+      name: '现金余额',
+      type: 'cash',
+      amount: calculateAnnualBonusTakeHome(cashflow.annualBonusInput),
+      isLocked: false,
+      isDisposable: true,
+      updatedAt,
+    })
+  }
+
   return {
-    assets: applySalaryIncomeToAssets(assets, cashflow.salaryInput, updatedAt),
+    assets: nextAssets,
     cashflow: {
       ...cashflow,
-      lastSalaryAssetMonth: month,
+      lastSalaryAssetMonth: shouldApplySalary ? month : cashflow.lastSalaryAssetMonth,
+      lastBonusAssetYear: shouldApplyBonus ? year : cashflow.lastBonusAssetYear,
     },
   }
 }
@@ -550,25 +575,6 @@ export function buildScenarioComparison(input: {
       monthlyDebtPayment: calculateMonthlyDebtPayment(input.data.liabilities),
     }),
   }
-}
-
-function buildCustomTargetProgress(data: AppDataPackage, annualAssetIncome: number): CustomTargetProgress[] {
-  return data.targets.map((target) => {
-    const assetProgressRate = target.targetAssetAmount
-      ? calculateNetWorth({ assets: data.assets, liabilities: data.liabilities }).incomeGeneratingNetWorth / target.targetAssetAmount
-      : undefined
-    const passiveIncomeProgressRate = target.targetMonthlyPassiveIncome
-      ? annualAssetIncome / 12 / target.targetMonthlyPassiveIncome
-      : undefined
-
-    return {
-      targetId: target.id,
-      name: target.name,
-      assetProgressRate,
-      passiveIncomeProgressRate,
-      isCompleted: [assetProgressRate, passiveIncomeProgressRate].some((rate) => rate !== undefined && rate >= 1),
-    }
-  })
 }
 
 function buildInsightMessages(
@@ -716,9 +722,18 @@ function isRecurringCashflowActive(rule: RecurringCashflow, month: string): bool
   return rule.startMonth <= month && (!rule.endMonth || rule.endMonth >= month)
 }
 
-function resolveRecurringActiveIncome(rule: RecurringCashflow): number {
-  if (rule.salaryInput) return Math.round(calculateSalaryIncomeEstimate(rule.salaryInput).monthlyTakeHomeIncome)
-  return rule.activeIncome
+function resolveRecurringActiveIncome(rule: RecurringCashflow, month: string): number {
+  const monthlyIncome = rule.salaryInput ? Math.round(calculateSalaryIncomeEstimate(rule.salaryInput).monthlyTakeHomeIncome) : rule.activeIncome
+  return monthlyIncome + (isAnnualBonusPayoutMonth(rule.annualBonusInput, month) ? calculateAnnualBonusTakeHome(rule.annualBonusInput) : 0)
+}
+
+function isAnnualBonusPayoutMonth(input: AnnualBonusInput | undefined, month: string): boolean {
+  if (!input?.enabled) return false
+  return Number(month.slice(5, 7)) === input.payoutMonth
+}
+
+function yearFromMonth(month: string): number {
+  return Number(month.slice(0, 4))
 }
 
 function currentMonth(): string {

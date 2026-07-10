@@ -108,7 +108,6 @@ function isEmptyStart(value: AppDataPackage): boolean {
     value.liabilities.length === 0 &&
     value.recurringCashflows.length === 0 &&
     value.oneTimeCashflows.length === 0 &&
-    value.targets.length === 0 &&
     value.budgets.every((budget) => budget.monthlyFixed + budget.monthlyDaily + budget.monthlyFamily === 0)
   )
 }

@@ -34,7 +34,7 @@ Redis 不进入 MVP 第一版实现，只在后续登录、同步、缓存或服
 
 ### 3.1 必做
 
-1. 首次目标设置：目标模板、三档预算、目标资产、目标月被动收入。
+1. 首次设置：三档预算、当前资产负债、持续现金流。
 2. 首页仪表盘：自由等级、覆盖率、资产、缺口、支撑年限、预计达成时间、关键提醒。
 3. 资产负债：收益型资产、负债、不可动用资产、预留资产、年化收益率。
 4. 预算：基础、舒适、理想三档预算，支持子项化月总支出和年度大额支出。
@@ -46,7 +46,7 @@ Redis 不进入 MVP 第一版实现，只在后续登录、同步、缓存或服
 
 1. 耐用消费成本只支持在现金流中录入“耐用消费本月摊销”。
 2. 退休预估保留为独立后续 spec，不进入 MVP 第一版。
-3. 自定义目标只作为辅助完成度展示，不覆盖预算覆盖模型。
+3. 旧版自定义目标只保留数据兼容，不进入 MVP 页面和自由判断。
 
 ### 3.3 不做
 
@@ -112,7 +112,9 @@ MVP 使用 4 个底部 Tab。
 2. 列表行展示明显 tag，例如工资、被动收入、支出、一次性收入。
 3. 新增操作以列表末尾的“+ 新增现金流”行进入弹窗。
 4. 弹窗内选择现金流类型后展示对应字段。
-5. 系统自动计算总收入、总支出、月结余。
+5. 工资现金流支持年终奖，可录入总额或到手额、发放月份；当前 MVP 总额按到手额处理，不额外估算年终奖税。
+6. 年终奖在发放月份每年自动加入一次现金余额，并在该月推演现金流里计入主动收入。
+7. 系统自动计算总收入、总支出、月结余。
 
 ### 4.3 推演
 
@@ -146,11 +148,10 @@ MVP 使用 4 个底部 Tab。
 
 首次进入时展示轻量引导流程：
 
-1. 选择目标模板：小县城基础自由、城市基础自由、标准自由、高级自由、自定义。
-2. 录入三档预算。
-3. 录入当前资产和负债。
-4. 录入当前月度现金流。
-5. 进入首页。
+1. 录入三档预算。
+2. 录入当前资产和负债。
+3. 录入当前月度现金流。
+4. 进入首页。
 
 每一步允许跳过。跳过后首页显示空状态提示，用户可通过底部“录入”Tab 补齐数据。
 
@@ -219,12 +220,7 @@ interface DashboardRepository {
   getDashboardSnapshot(): Promise<DashboardSnapshot>
 }
 
-interface TargetRepository {
-  listTargets(): Promise<FreedomTarget[]>
-  saveTarget(target: FreedomTarget): Promise<void>
-  removeTarget(id: string): Promise<void>
-}
-
+/** @deprecated 当前自由条件以三档预算为准，目标仓储仅保留用于旧数据兼容。 */
 interface AssetRepository {
   listAssets(): Promise<Asset[]>
   saveAsset(asset: Asset): Promise<void>
@@ -263,7 +259,6 @@ interface SettingsRepository {
 ```ts
 type AppDataPackage = {
   schemaVersion: 1
-  targets: FreedomTarget[]
   assets: Asset[]
   liabilities: Liability[]
   budgets: Budget[]
@@ -272,23 +267,6 @@ type AppDataPackage = {
   scenarios: Scenario[]
   settings: AppSettings
   updatedAt: string
-}
-```
-
-### 8.2 FreedomTarget
-
-```ts
-type FreedomTarget = {
-  id: string
-  name: string
-  level: 'basic' | 'comfortable' | 'ideal' | 'custom'
-  linkedBudgetLevel?: 'basic' | 'comfortable' | 'ideal'
-  targetAssetAmount?: number
-  targetMonthlyPassiveIncome?: number
-  requiresHouse?: boolean
-  requiresCar?: boolean
-  regionLabel?: string
-  priority: 'budget_coverage_first' | 'asset_or_passive_income'
 }
 ```
 
@@ -435,7 +413,6 @@ type DashboardSnapshot = {
   budgetSummaries: BudgetSummary[]
   supportYearsByBudget: Record<'basic' | 'comfortable' | 'ideal', SupportYearsResult>
   freedomTimeByBudget: Record<'basic' | 'comfortable' | 'ideal', FreedomTimeResult>
-  customTargetProgress: CustomTargetProgress[]
   insightMessages: InsightMessage[]
   updatedAt: string
 }
@@ -459,14 +436,6 @@ type FreedomTimeResult = {
   months?: number
   targetDateLabel?: string
   reason?: string
-}
-
-type CustomTargetProgress = {
-  targetId: string
-  name: string
-  assetProgressRate?: number
-  passiveIncomeProgressRate?: number
-  isCompleted: boolean
 }
 
 type InsightMessage = {
@@ -700,16 +669,14 @@ Domain Service 至少覆盖：
 
 输入：
 
-1. 目标资产 `2000000`。
-2. 基础预算 `5000 / 月`。
-3. 当前收益型净资产、月结余、年资产收益。
+1. 基础预算 `5000 / 月`。
+2. 当前收益型资产总额、月结余、年资产收益。
 
 期望：
 
 1. 展示年资产收益覆盖率。
-2. 展示距离目标资产还差多少。
-3. 展示按当前月结余和收益率预计需要多久。
-4. 展示是否满足月被动收入 `5000`。
+2. 展示当前资产收益达到多少/月，以及基础自由门槛是多少/月。
+3. 展示按当前月结余和收益率预计需要多久覆盖基础预算。
 
 #### 场景二：城市打工人
 

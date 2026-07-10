@@ -4,7 +4,6 @@ import type {
   Asset,
   Budget,
   DashboardSnapshot,
-  FreedomTarget,
   Liability,
   OneTimeCashflow,
   RecurringCashflow,
@@ -19,12 +18,6 @@ export interface AppDataRepository {
 
 export interface DashboardRepository {
   getDashboardSnapshot(): Promise<DashboardSnapshot>
-}
-
-export interface TargetRepository {
-  listTargets(): Promise<FreedomTarget[]>
-  saveTarget(target: FreedomTarget): Promise<void>
-  removeTarget(id: string): Promise<void>
 }
 
 export interface AssetRepository {
