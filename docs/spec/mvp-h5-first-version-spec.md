@@ -264,7 +264,6 @@ type AppDataPackage = {
   budgets: Budget[]
   oneTimeCashflows: OneTimeCashflow[]
   recurringCashflows: RecurringCashflow[]
-  scenarios: Scenario[]
   settings: AppSettings
   updatedAt: string
 }
@@ -367,21 +366,7 @@ type MonthlyCashflow = {
 }
 ```
 
-### 8.7 Scenario
-
-```ts
-type Scenario = {
-  id: string
-  name: string
-  monthlyActiveIncome: number
-  monthlyExpense: number
-  lockedAssetAmount: number
-  reservedAssetAmount: number
-  budgetLevel: 'basic' | 'comfortable' | 'ideal'
-}
-```
-
-### 8.8 AppSettings
+### 8.7 AppSettings
 
 ```ts
 type AppSettings = {

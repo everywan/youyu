@@ -143,11 +143,8 @@ export type SalaryIncomeEstimate = {
   monthlyTakeHomeIncome: number
 }
 
-export type Scenario = {
-  id: string
-  name: string
+export type ProjectionParameters = {
   monthlyActiveIncome: number
-  monthlyExpense: number
   lockedAssetAmount: number
   reservedAssetAmount: number
   budgetLevel: BudgetLevel
@@ -166,7 +163,6 @@ export type AppDataPackage = {
   budgets: Budget[]
   oneTimeCashflows: OneTimeCashflow[]
   recurringCashflows: RecurringCashflow[]
-  scenarios: Scenario[]
   settings: AppSettings
   updatedAt: string
 }

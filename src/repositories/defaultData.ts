@@ -18,7 +18,6 @@ export function createDefaultAppData(): AppDataPackage {
     ],
     oneTimeCashflows: [],
     recurringCashflows: [],
-    scenarios: [],
     settings: {
       currency: 'CNY',
       inflationRate: 0.01,

@@ -14,7 +14,7 @@ import type {
   OneTimeCashflow,
   ProvidentFundCity,
   RecurringCashflow,
-  Scenario,
+  ProjectionParameters,
   ScenarioComparison,
   SalaryIncomeEstimate,
   SalaryIncomeInput,
@@ -309,7 +309,7 @@ export function calculateDashboard(data: AppDataPackage, options: { currentMonth
     .map((budget) => calculateBudgetSummary(budget, netWorth.annualAssetIncome))
   const latestCashflow = buildMonthlyCashflowFromRecurring(data.recurringCashflows, options.currentMonth ?? currentMonth())
   const latestMonthlySurplus = latestCashflow ? calculateMonthlySurplus(latestCashflow) : 0
-  const latestMonthlyCashIncome = latestCashflow ? latestCashflow.activeIncome : 0
+  const latestMonthlyCashIncome = latestCashflow ? latestCashflow.activeIncome + latestCashflow.passiveIncome : 0
   const monthlyDebtPayment = calculateMonthlyDebtPayment(data.liabilities)
   const freedomLevel = calculateFreedomLevel(data.budgets, netWorth.annualAssetIncome)
   const supportYearsByBudget = emptySupportYears()
@@ -494,11 +494,9 @@ export function applyRecurringSalaryIncomeToAssets(
   month: string,
   updatedAt = new Date().toISOString(),
 ): { assets: Asset[]; cashflow: RecurringCashflow } {
-  const year = yearFromMonth(month)
   const shouldApplySalary = Boolean(cashflow.salaryInput) && cashflow.lastSalaryAssetMonth !== month
-  const shouldApplyBonus = isAnnualBonusPayoutMonth(cashflow.annualBonusInput, month) && cashflow.lastBonusAssetYear !== year
 
-  if (!shouldApplySalary && !shouldApplyBonus) {
+  if (!shouldApplySalary) {
     return { assets, cashflow }
   }
 
@@ -506,24 +504,12 @@ export function applyRecurringSalaryIncomeToAssets(
   if (shouldApplySalary && cashflow.salaryInput) {
     nextAssets = applySalaryIncomeToAssets(nextAssets, cashflow.salaryInput, updatedAt)
   }
-  if (shouldApplyBonus) {
-    nextAssets = upsertCoreAssetAmount(nextAssets, {
-      id: 'asset-cash-balance',
-      name: '现金余额',
-      type: 'cash',
-      amount: calculateAnnualBonusTakeHome(cashflow.annualBonusInput),
-      isLocked: false,
-      isDisposable: true,
-      updatedAt,
-    })
-  }
-
   return {
     assets: nextAssets,
     cashflow: {
       ...cashflow,
       lastSalaryAssetMonth: shouldApplySalary ? month : cashflow.lastSalaryAssetMonth,
-      lastBonusAssetYear: shouldApplyBonus ? year : cashflow.lastBonusAssetYear,
+      lastBonusAssetYear: cashflow.lastBonusAssetYear,
     },
   }
 }
@@ -531,7 +517,7 @@ export function applyRecurringSalaryIncomeToAssets(
 export function buildScenarioComparison(input: {
   data: AppDataPackage
   current: DashboardSnapshot
-  scenario: Scenario
+  scenario: ProjectionParameters
 }): ScenarioComparison {
   const netWorth = calculateNetWorth({ assets: input.data.assets, liabilities: input.data.liabilities })
   const results = emptyFreedomTime()
@@ -620,7 +606,7 @@ function buildInsightMessages(
 }
 
 function buildScenarioBottleneck(input: {
-  scenario: Scenario
+  scenario: ProjectionParameters
   netWorth: number
   basicAnnualBudget: number
   annualAssetIncome: number
@@ -722,18 +708,11 @@ function isRecurringCashflowActive(rule: RecurringCashflow, month: string): bool
   return rule.startMonth <= month && (!rule.endMonth || rule.endMonth >= month)
 }
 
-function resolveRecurringActiveIncome(rule: RecurringCashflow, month: string): number {
-  const monthlyIncome = rule.salaryInput ? Math.round(calculateSalaryIncomeEstimate(rule.salaryInput).monthlyTakeHomeIncome) : rule.activeIncome
-  return monthlyIncome + (isAnnualBonusPayoutMonth(rule.annualBonusInput, month) ? calculateAnnualBonusTakeHome(rule.annualBonusInput) : 0)
-}
+function resolveRecurringActiveIncome(rule: RecurringCashflow, _month: string): number {
+  if (!rule.salaryInput) return rule.activeIncome
 
-function isAnnualBonusPayoutMonth(input: AnnualBonusInput | undefined, month: string): boolean {
-  if (!input?.enabled) return false
-  return Number(month.slice(5, 7)) === input.payoutMonth
-}
-
-function yearFromMonth(month: string): number {
-  return Number(month.slice(0, 4))
+  const estimate = calculateSalaryIncomeEstimate(rule.salaryInput)
+  return Math.round(estimate.monthlyTakeHomeIncome + estimate.monthlyProvidentFundIncome)
 }
 
 function currentMonth(): string {

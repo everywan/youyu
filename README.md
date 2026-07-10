@@ -128,7 +128,6 @@ type AppDataPackage = {
   budgets: Budget[]
   oneTimeCashflows: OneTimeCashflow[]
   recurringCashflows: RecurringCashflow[]
-  scenarios: Scenario[]
   settings: AppSettings
   updatedAt: string
 }

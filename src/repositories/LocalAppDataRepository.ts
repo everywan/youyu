@@ -177,7 +177,7 @@ function parseAndValidate(json: string): AppDataPackage {
 
   const normalized = normalizeV1Shape(value)
 
-  for (const field of ['assets', 'liabilities', 'budgets', 'oneTimeCashflows', 'recurringCashflows', 'scenarios'] as const) {
+  for (const field of ['assets', 'liabilities', 'budgets', 'oneTimeCashflows', 'recurringCashflows'] as const) {
     if (!Array.isArray(normalized[field])) {
       throw new Error(`字段缺失：${field}`)
     }
@@ -196,6 +196,7 @@ function normalizeV1Shape(value: Record<string, unknown>): Record<string, unknow
   if (value.schemaVersion !== supportedSchemaVersion) return value
 
   const next = { ...value }
+  delete next.scenarios
   if (Array.isArray(next.assets)) {
     next.assets = next.assets.map((asset) => normalizeAssetShape(asset))
   }

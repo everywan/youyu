@@ -202,31 +202,7 @@
             <a-select v-model:value="recurringForm.salaryInput.providentFundCity" :options="providentFundCityOptions" @change="syncProvidentFundBaseCap" />
             <a-input-number v-model:value="recurringForm.salaryInput.providentFundBaseCap" class="full-span" :min="0" :controls="false" addon-before="公积金基数上限" style="width: 100%" />
             <a-input-number v-model:value="providentFundRatePercent" :min="0" :max="100" :step="0.5" :controls="false" addon-before="公积金" addon-after="%" style="width: 100%" />
-            <a-checkbox v-model:checked="recurringForm.annualBonusInput.enabled" class="full-span">年终奖</a-checkbox>
-            <template v-if="recurringForm.annualBonusInput.enabled">
-              <a-select v-model:value="recurringForm.annualBonusInput.amountMode" :options="annualBonusAmountModeOptions" />
-              <a-select v-model:value="recurringForm.annualBonusInput.payoutMonth" :options="annualBonusPayoutMonthOptions" />
-              <a-input-number
-                v-if="recurringForm.annualBonusInput.amountMode === 'gross'"
-                v-model:value="recurringForm.annualBonusInput.grossAmount"
-                class="full-span"
-                :min="0"
-                :controls="false"
-                addon-before="年终奖总额"
-                addon-after="元"
-                style="width: 100%"
-              />
-              <a-input-number
-                v-else
-                v-model:value="recurringForm.annualBonusInput.netAmount"
-                class="full-span"
-                :min="0"
-                :controls="false"
-                addon-before="年终奖到手"
-                addon-after="元"
-                style="width: 100%"
-              />
-            </template>
+            <div class="full-span metric-note">年终奖金额和对应支出通常有波动，默认不计入持续现金流与预算推演；实际到账后可作为一次性收入单独录入。</div>
           </template>
           <a-input-number v-if="cashflowFormKind === 'passive_income'" v-model:value="recurringForm.passiveIncome" class="full-span" :min="0" :controls="false" addon-before="被动收入" style="width: 100%" />
           <template v-if="cashflowFormKind === 'expense'">
@@ -251,12 +227,8 @@
                 <span>公积金入账</span>
                 <strong>{{ formatCurrency(salaryEstimate.monthlyProvidentFundIncome) }}</strong>
               </div>
-              <div v-if="recurringForm.annualBonusInput.enabled">
-                <span>{{ recurringForm.annualBonusInput.payoutMonth }}月年终奖</span>
-                <strong>{{ formatCurrency(annualBonusTakeHome) }}</strong>
-              </div>
             </div>
-            <div class="full-span metric-note">保存后会把本月税后工资加入“现金余额”，公积金加入“公积金余额”；年终奖在发放月份每年自动加入一次“现金余额”。</div>
+            <div class="full-span metric-note">月现金流和预算推演包含税后工资与个人、单位双方公积金；资产入账时，税后工资加入“现金余额”，公积金加入“公积金余额”。</div>
           </template>
           <div class="full-span metric-note">当月自动结余：{{ formatCurrency(recurringSurplus) }}</div>
         </template>
@@ -270,7 +242,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import {
   applyOneTimeCashflowToAssets,
   applyRecurringSalaryIncomeToAssets,
-  calculateAnnualBonusTakeHome,
   calculateAssetAnnualIncome,
   calculateAnnualBudgetExpense,
   calculateMonthlyFixedExpense,
@@ -327,14 +298,6 @@ const assetTypeSelectOptions = assetTypeOptions()
 const assetCategorySelectOptions = assetCategoryOptions()
 const liabilityTypeSelectOptions = liabilityTypeOptions()
 const providentFundCityOptions = providentFundCities.map((value) => ({ value, label: value }))
-const annualBonusAmountModeOptions = [
-  { value: 'gross', label: '总额' },
-  { value: 'net', label: '到手额' },
-]
-const annualBonusPayoutMonthOptions = Array.from({ length: 12 }, (_, index) => {
-  const month = index + 1
-  return { value: month, label: `${month}月发放` }
-})
 const cashflowKindOptions: { value: CashflowKind; label: string }[] = [
   { value: 'salary', label: cashflowKindLabel('salary') },
   { value: 'passive_income', label: cashflowKindLabel('passive_income') },
@@ -431,7 +394,6 @@ const cashflowRows = computed(() => [
 ])
 const salaryEstimate = computed(() => calculateSalaryIncomeEstimate(recurringForm.salaryInput))
 const monthlyTakeHomeIncome = computed(() => Math.round(salaryEstimate.value.monthlyTakeHomeIncome))
-const annualBonusTakeHome = computed(() => calculateAnnualBonusTakeHome(recurringForm.annualBonusInput))
 const providentFundRatePercent = computed({
   get: () => Math.round(recurringForm.salaryInput.providentFundRate * 1000) / 10,
   set: (value: number) => {
@@ -620,8 +582,8 @@ function saveRecurringCashflow() {
     activeIncome: isSalary ? monthlyTakeHomeIncome.value : 0,
     salaryInput: isSalary ? clone(recurringForm.salaryInput) : undefined,
     lastSalaryAssetMonth: recurringForm.lastSalaryAssetMonth,
-    annualBonusInput: isSalary ? clone(recurringForm.annualBonusInput) : undefined,
-    lastBonusAssetYear: recurringForm.lastBonusAssetYear,
+    annualBonusInput: undefined,
+    lastBonusAssetYear: undefined,
     passiveIncome: isPassive ? recurringForm.passiveIncome : 0,
     fixedExpense: isExpense ? recurringForm.fixedExpense : 0,
     dailyExpense: isExpense ? recurringForm.dailyExpense : 0,
@@ -728,14 +690,13 @@ function calculateRecurringSurplus(cashflow: RecurringCashflow): number {
 }
 
 function cashflowRowDescription(cashflow: RecurringCashflow): string {
-  const bonusText = cashflow.annualBonusInput?.enabled ? ` · 年终奖 ${cashflow.annualBonusInput.payoutMonth}月` : ''
-  return `${cashflow.startMonth} 起${bonusText} · 当月结余 ${formatCurrency(calculateRecurringSurplus(cashflow))}`
+  return `${cashflow.startMonth} 起 · 当月结余 ${formatCurrency(calculateRecurringSurplus(cashflow))}`
 }
 
-function calculateRecurringActiveIncome(cashflow: RecurringCashflow, month: string): number {
-  const monthlyIncome = cashflow.salaryInput ? Math.round(calculateSalaryIncomeEstimate(cashflow.salaryInput).monthlyTakeHomeIncome) : cashflow.activeIncome
-  const bonusIncome = cashflow.annualBonusInput?.enabled && Number(month.slice(5, 7)) === cashflow.annualBonusInput.payoutMonth ? calculateAnnualBonusTakeHome(cashflow.annualBonusInput) : 0
-  return monthlyIncome + bonusIncome
+function calculateRecurringActiveIncome(cashflow: RecurringCashflow, _month: string): number {
+  if (!cashflow.salaryInput) return cashflow.activeIncome
+  const estimate = calculateSalaryIncomeEstimate(cashflow.salaryInput)
+  return Math.round(estimate.monthlyTakeHomeIncome + estimate.monthlyProvidentFundIncome)
 }
 
 function defaultSalaryInput(monthlySalary = 0): SalaryIncomeInput {

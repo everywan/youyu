@@ -29,6 +29,20 @@ describe('LocalAppDataRepository', () => {
     expect(reloaded.assets.map((asset) => asset.name)).toEqual(expect.arrayContaining(['现金余额', '公积金余额', '货币基金']))
   })
 
+  it('drops legacy scenarios from imported and exported data', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const legacyJson = JSON.stringify({
+      ...createDefaultAppData(),
+      scenarios: [{ id: 'legacy-scenario', name: '旧场景' }],
+    })
+
+    const imported = await repository.importAppData(legacyJson)
+    const exported = JSON.parse(await repository.exportAppData()) as Record<string, unknown>
+
+    expect('scenarios' in imported).toBe(false)
+    expect('scenarios' in exported).toBe(false)
+  })
+
   it('rejects malformed restore data without replacing the current package', async () => {
     const repository = new LocalAppDataRepository('test-app-data')
     const data = createDefaultAppData()

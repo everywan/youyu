@@ -336,10 +336,36 @@ textarea {
 .projection-rule {
   margin: 0;
   border-left: 3px solid #8bbde8;
-  padding-left: 10px;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  background: #f7fbff;
   color: #667085;
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.6;
+}
+
+.projection-rule-title {
+  margin-bottom: 4px;
+  color: #2468a9;
+  font-weight: 760;
+}
+
+.projection-rule-list {
+  display: grid;
+  gap: 5px;
+}
+
+.projection-rule-list p {
+  margin: 0;
+}
+
+.projection-formula {
+  color: #2468a9;
+  font-weight: 700;
+}
+
+.projection-rule strong {
+  color: #344054;
 }
 
 .projection-steps {

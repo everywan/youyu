@@ -32,16 +32,16 @@
         <div class="metric-value">{{ formatCurrency(snapshot.incomeGeneratingNetWorth) }}</div>
       </article>
       <article class="metric-card">
-        <div class="metric-label">可支配资产</div>
-        <div class="metric-value">{{ formatCurrency(snapshot.disposableAssets) }}</div>
+        <div class="metric-label">年资产收益</div>
+        <div class="metric-value">{{ formatCurrency(snapshot.annualAssetIncome) }}</div>
       </article>
       <article class="metric-card">
-        <div class="metric-label">基础年资金缺口</div>
-        <div class="metric-value">{{ formatCurrency(primaryGap) }}</div>
+        <div class="metric-label">月净收入</div>
+        <div class="metric-value">{{ formatCurrency(monthlyNetIncome) }}</div>
       </article>
       <article class="metric-card">
-        <div class="metric-label">基础支撑年限</div>
-        <div class="metric-value">{{ formatYears(snapshot.supportYearsByBudget.basic) }}</div>
+        <div class="metric-label">赚 100 元需要</div>
+        <div class="metric-value">{{ laborHoursFor100Label }}(11h/天)</div>
       </article>
     </section>
 
@@ -99,7 +99,7 @@
 import { computed } from 'vue'
 import { buildMonthlyCashflowFromRecurring } from '../domain/calculations'
 import type { AppDataPackage, BudgetLevel, DashboardSnapshot } from '../domain/types'
-import { formatCurrency, formatFreedomTime, formatPercent, formatYears } from '../utils/format'
+import { formatCurrency, formatFreedomTime, formatPercent } from '../utils/format'
 
 const props = defineProps<{
   data: AppDataPackage
@@ -122,7 +122,19 @@ const budgetLabels: Record<BudgetLevel, string> = {
 const freedomLevelLabel = computed(() => levelLabels[props.snapshot.freedomLevel])
 const primarySummary = computed(() => props.snapshot.budgetSummaries.find((summary) => summary.level === 'basic'))
 const primaryCoverage = computed(() => primarySummary.value?.assetIncomeCoverageRate ?? 0)
-const primaryGap = computed(() => primarySummary.value?.annualFundingGap ?? 0)
+const monthlyNetIncome = computed(
+  () =>
+    (generatedCashflow.value ? generatedCashflow.value.activeIncome + generatedCashflow.value.passiveIncome : 0) +
+    props.snapshot.annualAssetIncome / 12 -
+    (primarySummary.value?.annualBudgetExpense ?? 0) / 12,
+)
+// 月工作小时数: 11*22
+const laborHoursFor100 = computed(() => (monthlyNetIncome.value > 0 ? (100 * 11*22) / monthlyNetIncome.value : undefined))
+const laborHoursFor100Label = computed(() => {
+  if (laborHoursFor100.value === undefined) return '无法覆盖'
+  if (laborHoursFor100.value < 0.1) return '< 0.1 小时'
+  return `${laborHoursFor100.value.toFixed(laborHoursFor100.value >= 10 ? 0 : 1)} 小时`
+})
 const budgetRows = computed(() =>
   (['basic', 'comfortable', 'ideal'] as BudgetLevel[]).map((level) => {
     const summary = props.snapshot.budgetSummaries.find((item) => item.level === level)

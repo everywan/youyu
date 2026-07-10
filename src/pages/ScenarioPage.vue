@@ -33,22 +33,6 @@
       <div v-if="selectedExplanation" class="projection-detail">
         <div class="formula-grid">
           <div>
-            <span>收益型资产总额</span>
-            <strong>{{ formatCurrency(selectedExplanation.startingAssetBase) }}</strong>
-          </div>
-          <div>
-            <span>可支配净资产</span>
-            <strong>{{ formatCurrency(selectedExplanation.startingInvestableNetWorth) }}</strong>
-          </div>
-          <div>
-            <span>月现金收入</span>
-            <strong>{{ formatCurrency(selectedExplanation.monthlyCashIncome) }}</strong>
-          </div>
-          <div>
-            <span>实际年化</span>
-            <strong>{{ formatPercent(selectedExplanation.annualReturn, 1) }}</strong>
-          </div>
-          <div>
             <span>年预算门槛</span>
             <strong>{{ formatCurrency(selectedExplanation.annualBudgetExpense) }}</strong>
           </div>
@@ -57,23 +41,31 @@
             <strong>{{ formatRequiredInvestable(selectedExplanation.requiredInvestableNetWorth) }}</strong>
           </div>
           <div>
-            <span>预算后净流入</span>
-            <strong>{{ formatCurrency(selectedExplanation.monthlyInvestableCashflow) }}</strong>
+            <span>收益型资产总额</span>
+            <strong>{{ formatCurrency(selectedExplanation.startingAssetBase) }}</strong>
           </div>
           <div>
-            <span>负债月供</span>
-            <strong>{{ formatCurrency(selectedExplanation.monthlyDebtPayment) }}</strong>
+            <span>实际年化</span>
+            <strong>{{ formatPercent(selectedExplanation.annualReturn, 1) }}</strong>
+          </div>
+          <div>
+            <span>月收入(到手工资+公积金)</span>
+            <strong>{{ formatCurrency(selectedExplanation.monthlyCashIncome) }}</strong>
+          </div>
+          <div>
+            <span>月净收入(月收入-支出)</span>
+            <strong>{{ formatCurrency(selectedExplanation.monthlyInvestableCashflow) }}</strong>
           </div>
         </div>
 
-        <p class="projection-rule">
-          规则：用所有收益型资产按整体实际年化滚动收益；当年资产收益覆盖年预算门槛时达成。
-          <br/>
-          每月按“现金收入
-          {{ formatCurrency(selectedExplanation.monthlyCashIncome) }} + 资产收入 - 预算支出
-          {{ formatCurrency(selectedExplanation.monthlyBudgetExpense) }} - 负债支出
-          {{ formatCurrency(selectedExplanation.monthlyDebtPayment) }}”滚动。
-        </p>
+        <div class="projection-rule">
+          <div class="projection-rule-list">
+            <p><strong>达成条件：</strong><span class="projection-formula">（综合年化收益率 − CPI）× 总资产 ≥ 当前档年预算</span></p>
+            <p><strong>备注：</strong>工资收入=税后工资+双方公积金；年终奖等意外收入、意外支出不计入推演。
+            <br/>
+            综合年化收益率按当前资产配置加权计算。</p>
+          </div>
+        </div>
 
         <div class="projection-steps">
           <div v-for="step in selectedExplanation.checkpoints" :key="step.month" class="projection-step" :class="{ covered: step.covered }">
@@ -96,16 +88,10 @@
     <section class="panel">
       <div class="section-label">参数</div>
       <div class="form-grid">
-        <a-input-number v-model:value="scenario.monthlyActiveIncome" :min="0" :controls="false" addon-before="月现金收入" style="width: 100%" />
+        <a-input-number v-model:value="scenario.monthlyActiveIncome" :min="0" :controls="false" addon-before="月收入" style="width: 100%" />
         <a-input-number v-model:value="selectedBudgetMonthlyExpense" disabled addon-before="当前档预算" style="width: 100%" />
         <a-input-number v-model:value="monthlyDebtPayment" disabled addon-before="负债月供" style="width: 100%" />
         <a-input-number v-model:value="selectedMonthlyInvestableCashflow" disabled addon-before="预算后净流入" style="width: 100%" />
-        <a-input-number v-model:value="scenario.reservedAssetAmount" :min="0" :controls="false" addon-before="预留资产" style="width: 100%" />
-        <a-input-number v-model:value="scenario.lockedAssetAmount" :min="0" :controls="false" addon-before="不可动用" style="width: 100%" />
-      </div>
-      <div class="metric-note">收益率使用资产页每个资产的年化收益率，并扣除设置页 CPI。</div>
-      <div class="sticky-actions">
-        <a-button type="primary" block @click="saveScenario">保存为场景</a-button>
       </div>
     </section>
 
@@ -120,39 +106,24 @@
       </article>
     </section>
 
-    <section class="panel">
-      <div class="section-label">已保存场景</div>
-      <div v-if="data.scenarios.length === 0" class="empty-state">还没有保存场景。</div>
-      <div v-for="item in data.scenarios" :key="item.id" class="list-row">
-        <div class="row-main">
-          <div class="row-title">{{ item.name }}</div>
-          <div class="row-description">现金收入 {{ formatCurrency(item.monthlyActiveIncome) }}</div>
-        </div>
-      </div>
-    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import { buildMonthlyCashflowFromRecurring, buildScenarioComparison, calculateMonthlyDebtPayment } from '../domain/calculations'
-import type { AppDataPackage, BudgetLevel, DashboardSnapshot, Scenario } from '../domain/types'
-import { createId, formatCurrency, formatFreedomTime, formatPercent } from '../utils/format'
+import type { AppDataPackage, BudgetLevel, DashboardSnapshot, ProjectionParameters } from '../domain/types'
+import { formatCurrency, formatFreedomTime, formatPercent } from '../utils/format'
 
 const props = defineProps<{
   data: AppDataPackage
   snapshot: DashboardSnapshot
 }>()
-const emit = defineEmits<{ save: [data: AppDataPackage] }>()
-
 const latestCashflow = buildMonthlyCashflowFromRecurring(props.data.recurringCashflows, currentMonth())
 const monthlyDebtPayment = calculateMonthlyDebtPayment(props.data.liabilities)
 
-const scenario = reactive<Scenario>({
-  id: createId('scenario'),
-  name: '默认推演',
-  monthlyActiveIncome: latestCashflow?.activeIncome ?? 0,
-  monthlyExpense: 0,
+const scenario = reactive<ProjectionParameters>({
+  monthlyActiveIncome: latestCashflow ? latestCashflow.activeIncome + latestCashflow.passiveIncome : 0,
   lockedAssetAmount: props.snapshot.lockedAssetAmount,
   reservedAssetAmount: props.snapshot.reservedAssetAmount,
   budgetLevel: 'basic',
@@ -178,15 +149,6 @@ function formatDelta(delta: number | undefined): string {
   const months = Math.abs(delta)
   const label = months >= 12 ? `${(months / 12).toFixed(1)} 年` : `${months} 个月`
   return delta < 0 ? `提前 ${label}` : `推迟 ${label}`
-}
-
-function saveScenario() {
-  const next: Scenario = {
-    ...scenario,
-    id: createId('scenario'),
-    name: `场景 ${props.data.scenarios.length + 1}`,
-  }
-  emit('save', { ...props.data, scenarios: [...props.data.scenarios, next] })
 }
 
 function formatRequiredInvestable(value: number | undefined): string {
