@@ -7,6 +7,35 @@ describe('LocalAppDataRepository', () => {
     localStorage.clear()
   })
 
+  it('creates first-use data with onboarding pending', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+
+    const data = await repository.loadAppData()
+
+    expect(data.onboardingCompleted).toBe(false)
+  })
+
+  it('treats existing v1 data without onboarding state as completed', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const { onboardingCompleted: _onboardingCompleted, ...legacyData } = createDefaultAppData()
+    localStorage.setItem('test-app-data', JSON.stringify(legacyData))
+
+    const data = await repository.loadAppData()
+
+    expect(data.onboardingCompleted).toBe(true)
+  })
+
+  it('marks imported data as onboarding completed', async () => {
+    const repository = new LocalAppDataRepository('test-app-data')
+    const json = JSON.stringify(createDefaultAppData())
+
+    const imported = await repository.importAppData(json)
+    const reloaded = await repository.loadAppData()
+
+    expect(imported.onboardingCompleted).toBe(true)
+    expect(reloaded.onboardingCompleted).toBe(true)
+  })
+
   it('saves, exports, imports, and reloads a versioned data package', async () => {
     const repository = new LocalAppDataRepository('test-app-data')
     const data = createDefaultAppData()
@@ -110,12 +139,8 @@ describe('LocalAppDataRepository', () => {
         startMonth: '2026-06',
         endMonth: '2026-06',
         activeIncome: 20_000,
+        salaryInput: undefined,
         passiveIncome: 500,
-        fixedExpense: 4_000,
-        dailyExpense: 3_000,
-        familyExpense: 1_000,
-        annualExpenseAllocated: 500,
-        durableCostAllocated: 300,
         note: '旧版月度记录',
       },
     ])
@@ -157,13 +182,13 @@ describe('LocalAppDataRepository', () => {
     expect(data.budgets[0].fixedExpenseMode).toBe('items')
     expect(data.budgets.map((budget) => budget.monthlyFixed)).toEqual([4_000, 8_000, 10_000])
     expect(data.budgets[0].fixedExpenseItems.map((item) => item.name)).toEqual([
-      '汇总项',
+      '综合预估',
       '餐饮',
       '房租房贷',
       '水电',
       '娱乐',
     ])
-    expect(data.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '汇总项', amount: 4_000 })
+    expect(data.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '综合预估', amount: 4_000 })
   })
 
   it('upgrades existing old default budget rows to the current presets', async () => {
@@ -205,14 +230,14 @@ describe('LocalAppDataRepository', () => {
     data.budgets = data.budgets.map((budget) => ({
       ...budget,
       monthlyFixed: 0,
-      fixedExpenseItems: budget.fixedExpenseItems.filter((item) => item.name !== '汇总项').map((item) => ({ ...item, amount: 0 })),
+      fixedExpenseItems: budget.fixedExpenseItems.filter((item) => item.name !== '综合预估').map((item) => ({ ...item, amount: 0 })),
     }))
     localStorage.setItem('test-app-data', JSON.stringify(data))
 
     const reloaded = await repository.loadAppData()
 
     expect(reloaded.budgets.map((budget) => budget.monthlyFixed)).toEqual([4_000, 8_000, 10_000])
-    expect(reloaded.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '汇总项', amount: 4_000 })
+    expect(reloaded.budgets[0].fixedExpenseItems[0]).toMatchObject({ category: 'custom', name: '综合预估', amount: 4_000 })
   })
 
   it('keeps deleted current budget preset rows deleted after reload', async () => {

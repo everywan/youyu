@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { assetCategoryLabel, assetTypeLabel, cashflowKindLabel, liabilityTypeLabel } from '../../src/domain/display'
+import { assetCategoryLabel, assetTypeLabel, cashflowKindLabel } from '../../src/domain/display'
 
 describe('display labels', () => {
-  it('maps internal asset and liability enums to Chinese labels', () => {
+  it('maps internal asset enums to Chinese labels', () => {
     expect(assetTypeLabel('fund')).toBe('基金')
     expect(assetTypeLabel('real_estate')).toBe('房产')
-    expect(liabilityTypeLabel('mortgage')).toBe('房贷')
-    expect(liabilityTypeLabel('credit_card')).toBe('信用卡')
   })
 
   it('maps row tags to user-facing Chinese labels', () => {

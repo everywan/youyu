@@ -4,7 +4,6 @@ import type {
   Asset,
   Budget,
   DashboardSnapshot,
-  Liability,
   OneTimeCashflow,
   RecurringCashflow,
 } from '../domain/types'
@@ -24,9 +23,6 @@ export interface AssetRepository {
   listAssets(): Promise<Asset[]>
   saveAsset(asset: Asset): Promise<void>
   removeAsset(id: string): Promise<void>
-  listLiabilities(): Promise<Liability[]>
-  saveLiability(liability: Liability): Promise<void>
-  removeLiability(id: string): Promise<void>
 }
 
 export interface BudgetRepository {

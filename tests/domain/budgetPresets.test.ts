@@ -8,8 +8,8 @@ describe('budget presets', () => {
 
     const result = addDefaultPresetRowsToLegacySingleItemBudget(legacyItems)
 
-    expect(result.map((item) => item.name)).toEqual(['汇总项', '餐饮', '房租房贷', '水电', '娱乐'])
-    expect(result[0]).toMatchObject({ id: 'budget-summary', category: 'custom', name: '汇总项', amount: 5_000 })
+    expect(result.map((item) => item.name)).toEqual(['综合预估', '餐饮', '房租房贷', '水电', '娱乐'])
+    expect(result[0]).toMatchObject({ id: 'budget-summary', category: 'custom', name: '综合预估', amount: 5_000 })
   })
 
   it('adds editable preset rows to legacy fixed-expense-only budgets', () => {
@@ -17,12 +17,12 @@ describe('budget presets', () => {
 
     const result = addDefaultPresetRowsToLegacySingleItemBudget(legacyItems)
 
-    expect(result.map((item) => item.name)).toEqual(['汇总项', '餐饮', '房租房贷', '水电', '娱乐'])
-    expect(result[0]).toMatchObject({ id: 'budget-summary', category: 'custom', name: '汇总项', amount: 5_000 })
+    expect(result.map((item) => item.name)).toEqual(['综合预估', '餐饮', '房租房贷', '水电', '娱乐'])
+    expect(result[0]).toMatchObject({ id: 'budget-summary', category: 'custom', name: '综合预估', amount: 5_000 })
   })
 
-  it('keeps current summary-only budgets unchanged after preset rows are deleted', () => {
-    const deletedPresetItems: FixedExpenseItem[] = [{ id: 'budget-summary', category: 'custom', name: '汇总项', amount: 5_000 }]
+  it('keeps current unsplit budgets unchanged after preset rows are deleted', () => {
+    const deletedPresetItems: FixedExpenseItem[] = [{ id: 'budget-summary', category: 'custom', name: '综合预估', amount: 5_000 }]
 
     const result = addDefaultPresetRowsToLegacySingleItemBudget(deletedPresetItems)
 

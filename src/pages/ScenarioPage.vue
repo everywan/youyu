@@ -53,7 +53,7 @@
             <strong>{{ formatCurrency(selectedExplanation.monthlyCashIncome) }}</strong>
           </div>
           <div>
-            <span>月净收入(月收入-支出)</span>
+            <span>月净流入(收入-预算)</span>
             <strong>{{ formatCurrency(selectedExplanation.monthlyInvestableCashflow) }}</strong>
           </div>
         </div>
@@ -61,7 +61,7 @@
         <div class="projection-rule">
           <div class="projection-rule-list">
             <p><strong>达成条件：</strong><span class="projection-formula">（综合年化收益率 − CPI）× 总资产 ≥ 当前档年预算</span></p>
-            <p><strong>备注：</strong>工资收入=税后工资+双方公积金；年终奖等意外收入、意外支出不计入推演。
+            <p><strong>备注：</strong>工资收入=税后工资+双方公积金；所有持续支出都应包含在预算中；年终奖等意外收入、意外支出不计入推演。
             <br/>
             综合年化收益率按当前资产配置加权计算。</p>
           </div>
@@ -82,7 +82,7 @@
           </div>
         </div>
       </div>
-      <div v-else class="empty-state">{{ selectedResult.reason ?? '先补齐预算和现金流，才能展示推演过程。' }}</div>
+      <div v-else class="empty-state">{{ selectedResult.reason ?? '先补齐预算和收入，才能展示推演过程。' }}</div>
     </section>
 
     <section class="panel">
@@ -90,7 +90,6 @@
       <div class="form-grid">
         <a-input-number v-model:value="scenario.monthlyActiveIncome" :min="0" :controls="false" addon-before="月收入" style="width: 100%" />
         <a-input-number v-model:value="selectedBudgetMonthlyExpense" disabled addon-before="当前档预算" style="width: 100%" />
-        <a-input-number v-model:value="monthlyDebtPayment" disabled addon-before="负债月供" style="width: 100%" />
         <a-input-number v-model:value="selectedMonthlyInvestableCashflow" disabled addon-before="预算后净流入" style="width: 100%" />
       </div>
     </section>
@@ -111,7 +110,7 @@
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
-import { buildMonthlyCashflowFromRecurring, buildScenarioComparison, calculateMonthlyDebtPayment } from '../domain/calculations'
+import { buildMonthlyCashflowFromRecurring, buildScenarioComparison } from '../domain/calculations'
 import type { AppDataPackage, BudgetLevel, DashboardSnapshot, ProjectionParameters } from '../domain/types'
 import { formatCurrency, formatFreedomTime, formatPercent } from '../utils/format'
 
@@ -120,7 +119,6 @@ const props = defineProps<{
   snapshot: DashboardSnapshot
 }>()
 const latestCashflow = buildMonthlyCashflowFromRecurring(props.data.recurringCashflows, currentMonth())
-const monthlyDebtPayment = calculateMonthlyDebtPayment(props.data.liabilities)
 
 const scenario = reactive<ProjectionParameters>({
   monthlyActiveIncome: latestCashflow ? latestCashflow.activeIncome + latestCashflow.passiveIncome : 0,

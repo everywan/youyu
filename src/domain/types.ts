@@ -37,17 +37,6 @@ export type Asset = {
   updatedAt: string
 }
 
-export type Liability = {
-  id: string
-  name: string
-  type: 'mortgage' | 'car_loan' | 'consumer_loan' | 'credit_card' | 'personal_debt' | 'other'
-  balance: number
-  monthlyPayment?: number
-  annualInterestRate?: number
-  dueDate?: string
-  updatedAt: string
-}
-
 export type Budget = {
   id: string
   name: string
@@ -68,11 +57,16 @@ export type MonthlyCashflow = {
   activeIncome: number
   salaryInput?: SalaryIncomeInput
   passiveIncome: number
-  fixedExpense: number
-  dailyExpense: number
-  familyExpense: number
-  annualExpenseAllocated: number
-  durableCostAllocated: number
+  /** @deprecated 支出统一由预算表示，不参与计算。 */
+  fixedExpense?: number
+  /** @deprecated */
+  dailyExpense?: number
+  /** @deprecated */
+  familyExpense?: number
+  /** @deprecated */
+  annualExpenseAllocated?: number
+  /** @deprecated */
+  durableCostAllocated?: number
   note?: string
 }
 
@@ -104,11 +98,16 @@ export type RecurringCashflow = {
   annualBonusInput?: AnnualBonusInput
   lastBonusAssetYear?: number
   passiveIncome: number
-  fixedExpense: number
-  dailyExpense: number
-  familyExpense: number
-  annualExpenseAllocated: number
-  durableCostAllocated: number
+  /** @deprecated 支出统一由预算表示，不参与计算。 */
+  fixedExpense?: number
+  /** @deprecated */
+  dailyExpense?: number
+  /** @deprecated */
+  familyExpense?: number
+  /** @deprecated */
+  annualExpenseAllocated?: number
+  /** @deprecated */
+  durableCostAllocated?: number
   note?: string
 }
 
@@ -158,8 +157,8 @@ export type AppSettings = {
 
 export type AppDataPackage = {
   schemaVersion: 1
+  onboardingCompleted: boolean
   assets: Asset[]
-  liabilities: Liability[]
   budgets: Budget[]
   oneTimeCashflows: OneTimeCashflow[]
   recurringCashflows: RecurringCashflow[]
@@ -195,7 +194,6 @@ export type FreedomTimeExplanation = {
   reservedAssetAmount: number
   monthlyCashIncome: number
   monthlyBudgetExpense: number
-  monthlyDebtPayment: number
   monthlyInvestableCashflow: number
   annualReturn: number
   monthlyReturn: number

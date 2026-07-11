@@ -15,7 +15,6 @@ import type {
   Budget,
   DashboardSnapshot,
   FixedExpenseItem,
-  Liability,
   MonthlyCashflow,
   OneTimeCashflow,
   RecurringCashflow,
@@ -66,7 +65,7 @@ export class LocalAppDataRepository
   }
 
   async importAppData(json: string): Promise<AppDataPackage> {
-    const next = parseAndValidate(json)
+    const next = { ...parseAndValidate(json), onboardingCompleted: true }
     await this.saveAppData(next)
     return next
   }
@@ -88,22 +87,6 @@ export class LocalAppDataRepository
   async removeAsset(id: string): Promise<void> {
     const data = await this.loadAppData()
     data.assets = data.assets.filter((asset) => asset.id !== id)
-    await this.saveAppData(data)
-  }
-
-  async listLiabilities(): Promise<Liability[]> {
-    return (await this.loadAppData()).liabilities
-  }
-
-  async saveLiability(liability: Liability): Promise<void> {
-    const data = await this.loadAppData()
-    data.liabilities = upsertById(data.liabilities, liability)
-    await this.saveAppData(data)
-  }
-
-  async removeLiability(id: string): Promise<void> {
-    const data = await this.loadAppData()
-    data.liabilities = data.liabilities.filter((liability) => liability.id !== id)
     await this.saveAppData(data)
   }
 
@@ -177,7 +160,7 @@ function parseAndValidate(json: string): AppDataPackage {
 
   const normalized = normalizeV1Shape(value)
 
-  for (const field of ['assets', 'liabilities', 'budgets', 'oneTimeCashflows', 'recurringCashflows'] as const) {
+  for (const field of ['assets', 'budgets', 'oneTimeCashflows', 'recurringCashflows'] as const) {
     if (!Array.isArray(normalized[field])) {
       throw new Error(`字段缺失：${field}`)
     }
@@ -196,6 +179,7 @@ function normalizeV1Shape(value: Record<string, unknown>): Record<string, unknow
   if (value.schemaVersion !== supportedSchemaVersion) return value
 
   const next = { ...value }
+  next.onboardingCompleted = typeof value.onboardingCompleted === 'boolean' ? value.onboardingCompleted : true
   delete next.scenarios
   if (Array.isArray(next.assets)) {
     next.assets = next.assets.map((asset) => normalizeAssetShape(asset))
@@ -263,7 +247,7 @@ function normalizeBudgetShape(value: unknown): unknown {
 
 function addDefaultSummaryItemIfEmptyPresetBudget(value: Record<string, unknown>, items: FixedExpenseItem[]): FixedExpenseItem[] {
   if (!Array.isArray(value.fixedExpenseItems) || items.length === 0) return items
-  if (items.some((item) => item.amount > 0 || item.name === '汇总项')) return items
+  if (items.some((item) => item.amount > 0 || ['综合预估', '未拆分预算', '汇总项'].includes(item.name ?? ''))) return items
   if (items.every((item) => item.category === 'custom')) return items
 
   const level = value.level
@@ -296,11 +280,12 @@ function legacyBudgetItem(id: string, name: string, rawAmount: unknown): FixedEx
 function normalizeFixedExpenseItem(value: unknown): FixedExpenseItem {
   const item = isRecord(value) ? value : {}
   const category = normalizeFixedExpenseCategory(item.category, item.name)
+  const rawName = typeof item.name === 'string' ? item.name : undefined
 
   return {
     id: typeof item.id === 'string' && item.id.trim() ? item.id : `fixed-${category}`,
     category,
-    name: typeof item.name === 'string' ? item.name : undefined,
+    name: rawName === '汇总项' || rawName === '未拆分预算' ? '综合预估' : rawName,
     amount: Number(item.amount ?? 0),
   }
 }
@@ -315,11 +300,6 @@ function monthlyCashflowToRecurring(value: unknown): RecurringCashflow {
     activeIncome: cashflow.activeIncome,
     salaryInput: cashflow.salaryInput,
     passiveIncome: cashflow.passiveIncome,
-    fixedExpense: cashflow.fixedExpense,
-    dailyExpense: cashflow.dailyExpense,
-    familyExpense: cashflow.familyExpense,
-    annualExpenseAllocated: cashflow.annualExpenseAllocated,
-    durableCostAllocated: cashflow.durableCostAllocated,
     note: cashflow.note,
   }
 }
@@ -335,12 +315,6 @@ function validateAmounts(data: AppDataPackage): void {
       throw new Error('预留资产不能大于资产金额')
     }
     assertNonNegative(asset.annualYieldRate ?? 0, '收益率')
-  }
-
-  for (const liability of data.liabilities) {
-    assertNonNegative(liability.balance, '负债余额')
-    assertNonNegative(liability.monthlyPayment ?? 0, '月还款')
-    assertNonNegative(liability.annualInterestRate ?? 0, '负债利率')
   }
 
   for (const budget of data.budgets) {
@@ -397,12 +371,7 @@ function validateAmounts(data: AppDataPackage): void {
       assertNonNegative(cashflow.annualBonusInput.grossAmount, '年终奖总额')
       assertNonNegative(cashflow.annualBonusInput.netAmount, '年终奖到手额')
     }
-    assertNonNegative(cashflow.passiveIncome, '被动收入')
-    assertNonNegative(cashflow.fixedExpense, '固定支出')
-    assertNonNegative(cashflow.dailyExpense, '日常支出')
-    assertNonNegative(cashflow.familyExpense, '家庭支出')
-    assertNonNegative(cashflow.annualExpenseAllocated, '年度支出折算')
-    assertNonNegative(cashflow.durableCostAllocated, '耐用消费摊销')
+    assertNonNegative(cashflow.passiveIncome, '其他非资产收入')
   }
 
   assertNonNegative(data.settings.inflationRate, 'CPI')

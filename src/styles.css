@@ -66,6 +66,203 @@ textarea {
   line-height: 1.45;
 }
 
+.onboarding-header {
+  align-items: center;
+}
+
+.onboarding-brand {
+  color: #1f4f86;
+  font-size: 20px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.onboarding-card {
+  display: flex;
+  min-height: 480px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 26px 22px;
+  border: 1px solid #dfe8f2;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff 0%, #f1f7fd 100%);
+  box-shadow: 0 18px 45px rgba(31, 79, 134, 0.08);
+}
+
+.onboarding-kicker {
+  margin-bottom: 14px;
+  color: #2f6fa8;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.onboarding-title {
+  margin: 0;
+  color: #172033;
+  font-size: 27px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.onboarding-lead {
+  margin: 20px 0 0;
+  color: #526077;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.onboarding-question {
+  margin: 22px 0 0;
+  padding: 16px;
+  border-left: 3px solid #2f6fa8;
+  border-radius: 0 8px 8px 0;
+  color: #1f4f86;
+  background: rgba(47, 111, 168, 0.08);
+  font-size: 18px;
+  font-weight: 780;
+  line-height: 1.55;
+}
+
+.onboarding-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding-left: 22px;
+  color: #344054;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.freedom-levels {
+  display: grid;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.freedom-levels div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.freedom-levels strong {
+  color: #1f4f86;
+  font-size: 13px;
+}
+
+.freedom-levels span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.privacy-note {
+  margin-top: 24px;
+  padding: 13px;
+  border-radius: 8px;
+  color: #526077;
+  background: rgba(47, 111, 168, 0.08);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.onboarding-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: #cbd5e1;
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.onboarding-dots span.active {
+  width: 22px;
+  background: #2f6fa8;
+}
+
+.onboarding-actions {
+  margin-top: auto;
+}
+
+.onboarding-disclaimer {
+  margin: -5px 0 0;
+  color: #98a2b3;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.onboarding-finance-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-asset-group + .onboarding-asset-group {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #edf0f4;
+}
+
+.onboarding-row.non-income {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+}
+
+.onboarding-custom-income {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.onboarding-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(78px, 1.05fr) minmax(72px, 0.9fr) auto;
+  gap: 7px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.onboarding-row-heading {
+  margin-top: 0;
+  color: #8a94a6;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.onboarding-asset-identity {
+  display: grid;
+  gap: 5px;
+}
+
+.onboarding-budget-note {
+  margin: 6px 0 12px;
+}
+
+.onboarding-add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.onboarding-not-applicable {
+  color: #98a2b3;
+  text-align: center;
+}
+
+.onboarding-field-title {
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
 .panel,
 .metric-card,
 .list-card {
@@ -401,6 +598,39 @@ textarea {
   padding: 11px;
   background: #ffffff;
   text-align: left;
+}
+
+.asset-category-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+}
+
+.asset-category-heading .collapse-label {
+  flex: 0 0 auto;
+  color: #2468a9;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.asset-category-panel .asset-summary {
+  margin-top: 14px;
+}
+
+.asset-category-details {
+  margin-top: 14px;
+  padding-top: 6px;
+  border-top: 1px solid #eef2f7;
+}
+
+.asset-summary.non-income {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.asset-mark.non-income {
+  background: #d89614;
 }
 
 .asset-row .row-main {

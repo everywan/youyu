@@ -5,7 +5,7 @@
         v-if="data && showOnboarding"
         :data="data"
         @complete="handleOnboardingComplete"
-        @skip="showOnboarding = false"
+        @skip="handleOnboardingSkip"
       />
       <template v-else-if="data && snapshot">
         <section class="app-screen">
@@ -42,7 +42,6 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { calculateDashboard } from './domain/calculations'
 import type { AppDataPackage } from './domain/types'
-import { createDefaultAppData } from './repositories/defaultData'
 import { LocalAppDataRepository } from './repositories/LocalAppDataRepository'
 import EntryPage from './pages/EntryPage.vue'
 import HomePage from './pages/HomePage.vue'
@@ -69,7 +68,7 @@ const snapshot = computed(() => (data.value ? calculateDashboard(data.value) : u
 
 onMounted(async () => {
   data.value = await repository.loadAppData()
-  showOnboarding.value = isEmptyStart(data.value)
+  showOnboarding.value = !data.value.onboardingCompleted
   loading.value = false
 })
 
@@ -80,7 +79,7 @@ async function saveData(next: AppDataPackage) {
 
 async function replaceData(next: AppDataPackage) {
   await saveData(next)
-  showOnboarding.value = false
+  showOnboarding.value = !next.onboardingCompleted
   activeTab.value = 'home'
 }
 
@@ -92,23 +91,14 @@ async function importJson(json: string) {
 }
 
 async function handleOnboardingComplete(next: AppDataPackage) {
-  await saveData(next)
+  await saveData({ ...next, onboardingCompleted: true })
   showOnboarding.value = false
   activeTab.value = 'home'
 }
 
-function isEmptyStart(value: AppDataPackage): boolean {
-  const nonCoreAssets = value.assets.filter((asset) => !['现金余额', '公积金余额'].includes(asset.name))
-  const coreAssetAmount = value.assets
-    .filter((asset) => ['现金余额', '公积金余额'].includes(asset.name))
-    .reduce((total, asset) => total + asset.amount, 0)
-  return (
-    nonCoreAssets.length === 0 &&
-    coreAssetAmount === 0 &&
-    value.liabilities.length === 0 &&
-    value.recurringCashflows.length === 0 &&
-    value.oneTimeCashflows.length === 0 &&
-    value.budgets.every((budget) => budget.monthlyFixed + budget.monthlyDaily + budget.monthlyFamily === 0)
-  )
+async function handleOnboardingSkip() {
+  if (!data.value) return
+  await saveData({ ...data.value, onboardingCompleted: true })
+  showOnboarding.value = false
 }
 </script>

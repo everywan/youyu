@@ -47,7 +47,6 @@ const cashflow = (surplus: number): MonthlyCashflow => ({
 const appData = (overrides: Partial<AppDataPackage> = {}): AppDataPackage => ({
   schemaVersion: 1,
   assets: [],
-  liabilities: [],
   budgets: [],
   oneTimeCashflows: [],
   recurringCashflows: [],
@@ -58,6 +57,7 @@ const appData = (overrides: Partial<AppDataPackage> = {}): AppDataPackage => ({
   },
   updatedAt: '2026-06-28T00:00:00.000Z',
   ...overrides,
+  onboardingCompleted: overrides.onboardingCompleted ?? false,
 })
 
 describe('financial domain calculations', () => {
@@ -80,27 +80,19 @@ describe('financial domain calculations', () => {
           id: 'house',
           name: '自住房',
           type: 'real_estate',
+          assetCategory: 'non_income',
           amount: 800_000,
           isDisposable: false,
           isLocked: true,
           updatedAt: '2026-06-01',
         },
       ],
-      liabilities: [
-        {
-          id: 'loan',
-          name: '房贷',
-          type: 'mortgage',
-          balance: 300_000,
-          updatedAt: '2026-06-01',
-        },
-      ],
     })
 
-    expect(result.incomeGeneratingNetWorth).toBe(600_000)
-    expect(result.lockedAssetAmount).toBe(800_000)
+    expect(result.incomeGeneratingNetWorth).toBe(100_000)
+    expect(result.lockedAssetAmount).toBe(0)
     expect(result.reservedAssetAmount).toBe(20_000)
-    expect(result.disposableAssets).toBe(-220_000)
+    expect(result.disposableAssets).toBe(80_000)
     expect(result.annualAssetIncome).toBe(4_000)
   })
 
@@ -140,7 +132,6 @@ describe('financial domain calculations', () => {
           updatedAt: '2026-06-01',
         },
       ],
-      liabilities: [],
     })
 
     expect(result.incomeGeneratingNetWorth).toBe(100_000)
@@ -164,13 +155,12 @@ describe('financial domain calculations', () => {
           updatedAt: '2026-06-01',
         },
       ],
-      liabilities: [],
     })
 
     expect(result.annualAssetIncome).toBe(10_000)
   })
 
-  it('projects from all income-generating assets while debt is handled as monthly outflow', () => {
+  it('projects from all income-generating assets while all expenses are included in the budget', () => {
     const current = calculateDashboard(
       appData({
         assets: [
@@ -186,17 +176,7 @@ describe('financial domain calculations', () => {
             updatedAt: '2026-06-01',
           },
         ],
-        liabilities: [
-          {
-            id: 'loan',
-            name: '经营贷',
-            type: 'other',
-            balance: 400_000,
-            monthlyPayment: 2_000,
-            updatedAt: '2026-06-01',
-          },
-        ],
-        budgets: [budget('basic', 5_000)],
+        budgets: [budget('basic', 7_000)],
         recurringCashflows: [
           {
             id: 'salary',
@@ -216,13 +196,12 @@ describe('financial domain calculations', () => {
     )
 
     expect(current.incomeGeneratingAssetAmount).toBe(1_000_000)
-    expect(current.incomeGeneratingNetWorth).toBe(600_000)
+    expect(current.incomeGeneratingNetWorth).toBe(1_000_000)
     expect(current.freedomTimeByBudget.basic.explanation?.startingAssetBase).toBe(1_000_000)
-    expect(current.freedomTimeByBudget.basic.explanation?.startingInvestableNetWorth).toBe(600_000)
+    expect(current.freedomTimeByBudget.basic.explanation?.startingInvestableNetWorth).toBe(1_000_000)
     expect(current.freedomTimeByBudget.basic.explanation?.checkpoints[0]).toMatchObject({
       assetBase: 1_000_000,
     })
-    expect(current.freedomTimeByBudget.basic.explanation?.monthlyDebtPayment).toBe(2_000)
   })
 
   it('calculates annual budget expense, asset income coverage, and funding gap from budget items', () => {
@@ -291,7 +270,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 0,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 0,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 120_000,
       annualReturn: 0.04,
       startDate: new Date('2026-06-01T00:00:00.000Z'),
@@ -308,7 +286,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 0,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 5_000,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 60_000,
       annualReturn: 0,
       startDate: new Date('2026-06-01T00:00:00.000Z'),
@@ -325,7 +302,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 0,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 83_334,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 1_000_000,
       annualReturn: 0,
       startDate: new Date('2026-06-01T00:00:00.000Z'),
@@ -342,7 +318,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 40_000,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 10_000,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 60_000,
       annualReturn: 0.03,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
@@ -357,7 +332,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 40_000,
       monthlyCashIncome: 10_000,
       monthlyBudgetExpense: 5_000,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 60_000,
       requiredInvestableNetWorth: 2_000_000,
     })
@@ -375,7 +349,6 @@ describe('financial domain calculations', () => {
       incomeGeneratingNetWorth: 500_000,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 13_000,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 60_000,
       annualReturn: 0.03,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
@@ -406,7 +379,6 @@ describe('financial domain calculations', () => {
       reservedAssetAmount: 0,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 10_000,
-      monthlyDebtPayment: 0,
       annualBudgetExpense: 60_000,
       annualReturn: 0,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
@@ -420,15 +392,14 @@ describe('financial domain calculations', () => {
     })
   })
 
-  it('subtracts monthly debt payment from investable cashflow', () => {
+  it('includes housing and other recurring expenses in the selected budget', () => {
     const result = projectFreedomTime({
       incomeGeneratingNetWorth: 100_000,
       lockedAssetAmount: 0,
       reservedAssetAmount: 0,
       currentAnnualAssetIncome: 0,
       monthlyCashIncome: 10_000,
-      monthlyDebtPayment: 2_000,
-      annualBudgetExpense: 60_000,
+      annualBudgetExpense: 84_000,
       annualReturn: 0,
       startDate: new Date('2026-07-01T00:00:00.000Z'),
     })
@@ -517,7 +488,7 @@ describe('financial domain calculations', () => {
     )
 
     expect(snapshot.freedomLevel).toBe('none')
-    expect(snapshot.latestMonthlySurplus).toBe(6_000)
+    expect(snapshot.latestMonthlySurplus).toBe(1_000)
     expect(snapshot.budgetSummaries[0].assetIncomeCoverageRate).toBeCloseTo(0.4)
     expect(snapshot.insightMessages.length).toBeGreaterThan(0)
   })
@@ -744,7 +715,7 @@ describe('financial domain calculations', () => {
     expect(generated?.month).toBe('2026-06')
     expect(generated?.activeIncome).toBe(20_000)
     expect(generated ? calculateBudgetSummary(budget('basic', 5_000), generated.passiveIncome).annualBudgetExpense : 0).toBe(60_000)
-    expect(generated ? generated.activeIncome + generated.passiveIncome - generated.fixedExpense - generated.dailyExpense - generated.familyExpense - generated.annualExpenseAllocated - generated.durableCostAllocated : 0).toBe(11_000)
+    expect(generated ? generated.activeIncome + generated.passiveIncome : 0).toBe(20_000)
   })
 
   it('includes provident fund and ignores annual bonus in generated active income', () => {

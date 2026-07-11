@@ -42,7 +42,7 @@ export function createSummaryFixedExpenseItem(amount: number): FixedExpenseItem 
   return {
     id: 'budget-summary',
     category: 'custom',
-    name: '汇总项',
+    name: '综合预估',
     amount,
   }
 }
@@ -50,7 +50,7 @@ export function createSummaryFixedExpenseItem(amount: number): FixedExpenseItem 
 export function addDefaultPresetRowsToLegacySingleItemBudget(items: FixedExpenseItem[]): FixedExpenseItem[] {
   if (items.length !== 1) return items
   const [item] = items
-  if (item.id === 'budget-summary' || item.category !== 'custom' || !['汇总项', '固定支出'].includes(item.name ?? '')) return items
+  if (item.id === 'budget-summary' || item.category !== 'custom' || !['综合预估', '未拆分预算', '汇总项', '固定支出'].includes(item.name ?? '')) return items
 
   return [createSummaryFixedExpenseItem(item.amount), ...createDefaultFixedExpenseItems(0)]
 }

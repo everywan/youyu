@@ -8,7 +8,6 @@ import type {
   DashboardSnapshot,
   FreedomTimeResult,
   InsightMessage,
-  Liability,
   MonthlyCashflow,
   NetWorthSummary,
   OneTimeCashflow,
@@ -53,11 +52,10 @@ const annualTaxBrackets = [
 ]
 export const providentFundCities = Object.keys(providentFundBaseCaps) as ProvidentFundCity[]
 
-export function calculateNetWorth(input: { assets: Asset[]; liabilities: Liability[] }): NetWorthSummary {
+export function calculateNetWorth(input: { assets: Asset[] }): NetWorthSummary {
   const incomeAssets = input.assets.filter((asset) => (asset.assetCategory ?? 'income_generating') === 'income_generating')
   const assetAmount = sum(incomeAssets.map((asset) => asset.amount))
-  const liabilityAmount = sum(input.liabilities.map((liability) => liability.balance))
-  const incomeGeneratingNetWorth = assetAmount - liabilityAmount
+  const incomeGeneratingNetWorth = assetAmount
   const lockedAssetAmount = sum(incomeAssets.filter((asset) => asset.isLocked).map((asset) => asset.amount))
   const reservedAssetAmount = sum(incomeAssets.map((asset) => asset.reservedAmount ?? 0))
   const annualAssetIncome = sum(incomeAssets.map((asset) => calculateAssetAnnualIncome(asset)))
@@ -110,19 +108,7 @@ export function calculateBudgetSummary(budget: Budget, annualAssetIncome: number
 }
 
 export function calculateMonthlySurplus(cashflow: MonthlyCashflow): number {
-  return (
-    cashflow.activeIncome +
-    cashflow.passiveIncome -
-    cashflow.fixedExpense -
-    cashflow.dailyExpense -
-    cashflow.familyExpense -
-    cashflow.annualExpenseAllocated -
-    cashflow.durableCostAllocated
-  )
-}
-
-export function calculateMonthlyDebtPayment(liabilities: Liability[]): number {
-  return sum(liabilities.map((liability) => liability.monthlyPayment ?? 0))
+  return cashflow.activeIncome + cashflow.passiveIncome
 }
 
 export function getProvidentFundBaseCap(city: ProvidentFundCity): number {
@@ -193,7 +179,6 @@ export function projectFreedomTime(input: {
   reservedAssetAmount: number
   currentAnnualAssetIncome: number
   monthlyCashIncome: number
-  monthlyDebtPayment: number
   annualBudgetExpense: number
   annualReturn: number
   startDate?: Date
@@ -211,7 +196,7 @@ export function projectFreedomTime(input: {
   const startingAnnualPassiveIncome = startingAssetBase * annualReturnForIncome
   const monthlyBudgetExpense = input.annualBudgetExpense / 12
   const startingMonthlyAssetIncome = startingAssetBase * monthlyReturn
-  const startingMonthlyInvestableCashflow = input.monthlyCashIncome + Math.max(startingMonthlyAssetIncome, 0) - monthlyBudgetExpense - input.monthlyDebtPayment
+  const startingMonthlyInvestableCashflow = input.monthlyCashIncome + Math.max(startingMonthlyAssetIncome, 0) - monthlyBudgetExpense
   const checkpoints: NonNullable<FreedomTimeResult['explanation']>['checkpoints'] = []
   const startCheckpoint = {
     month: 0,
@@ -232,7 +217,6 @@ export function projectFreedomTime(input: {
     reservedAssetAmount: input.reservedAssetAmount,
     monthlyCashIncome: input.monthlyCashIncome,
     monthlyBudgetExpense,
-    monthlyDebtPayment: input.monthlyDebtPayment,
     monthlyInvestableCashflow: startingMonthlyInvestableCashflow,
     annualReturn: input.annualReturn,
     monthlyReturn,
@@ -264,7 +248,7 @@ export function projectFreedomTime(input: {
 
   for (let month = 1; month <= 80 * 12; month += 1) {
     const monthlyAssetIncome = Math.max(projectedAssetBase * monthlyReturn, 0)
-    const monthlyInvestableCashflow = input.monthlyCashIncome + monthlyAssetIncome - monthlyBudgetExpense - input.monthlyDebtPayment
+    const monthlyInvestableCashflow = input.monthlyCashIncome + monthlyAssetIncome - monthlyBudgetExpense
     projectedAssetBase += monthlyInvestableCashflow
     const projectedAnnualPassiveIncome = Math.max(projectedAssetBase, 0) * annualReturnForIncome
     const monthLabel = formatTargetMonth(addMonths(startDate, month))
@@ -302,15 +286,17 @@ export function projectFreedomTime(input: {
 }
 
 export function calculateDashboard(data: AppDataPackage, options: { currentMonth?: string } = {}): DashboardSnapshot {
-  const netWorth = calculateNetWorth({ assets: data.assets, liabilities: data.liabilities })
+  const netWorth = calculateNetWorth({ assets: data.assets })
   const budgetSummaries = budgetOrder
     .map((level) => data.budgets.find((budget) => budget.level === level))
     .filter((budget): budget is Budget => Boolean(budget))
     .map((budget) => calculateBudgetSummary(budget, netWorth.annualAssetIncome))
   const latestCashflow = buildMonthlyCashflowFromRecurring(data.recurringCashflows, options.currentMonth ?? currentMonth())
-  const latestMonthlySurplus = latestCashflow ? calculateMonthlySurplus(latestCashflow) : 0
+  const basicBudget = data.budgets.find((budget) => budget.level === 'basic')
+  const latestMonthlySurplus = latestCashflow
+    ? calculateMonthlySurplus(latestCashflow) - (basicBudget ? calculateAnnualBudgetExpense(basicBudget) / 12 : 0)
+    : 0
   const latestMonthlyCashIncome = latestCashflow ? latestCashflow.activeIncome + latestCashflow.passiveIncome : 0
-  const monthlyDebtPayment = calculateMonthlyDebtPayment(data.liabilities)
   const freedomLevel = calculateFreedomLevel(data.budgets, netWorth.annualAssetIncome)
   const supportYearsByBudget = emptySupportYears()
   const freedomTimeByBudget = emptyFreedomTime()
@@ -333,11 +319,10 @@ export function calculateDashboard(data: AppDataPackage, options: { currentMonth
             reservedAssetAmount: netWorth.reservedAssetAmount,
             currentAnnualAssetIncome: netWorth.annualAssetIncome,
             monthlyCashIncome: latestMonthlyCashIncome,
-            monthlyDebtPayment,
             annualBudgetExpense: summary.annualBudgetExpense,
             annualReturn: calculateRealAnnualReturn(data.assets, data.settings.inflationRate),
           })
-        : { status: 'missing_data', reason: latestCashflow ? '先录入预算，才能判断自由等级' : '先录入最近一个月现金流，才能推演达成时间' }
+        : { status: 'missing_data', reason: latestCashflow ? '先录入预算，才能判断自由等级' : '先录入持续性收入，才能推演达成时间' }
   }
 
   return {
@@ -361,11 +346,6 @@ export function buildMonthlyCashflowFromRecurring(rules: RecurringCashflow[], mo
     month,
     activeIncome: sum(activeRules.map((rule) => resolveRecurringActiveIncome(rule, month))),
     passiveIncome: sum(activeRules.map((rule) => rule.passiveIncome)),
-    fixedExpense: sum(activeRules.map((rule) => rule.fixedExpense)),
-    dailyExpense: sum(activeRules.map((rule) => rule.dailyExpense)),
-    familyExpense: sum(activeRules.map((rule) => rule.familyExpense)),
-    annualExpenseAllocated: sum(activeRules.map((rule) => rule.annualExpenseAllocated)),
-    durableCostAllocated: sum(activeRules.map((rule) => rule.durableCostAllocated)),
     note: activeRules.map((rule) => rule.name).join(' + '),
   }
 }
@@ -519,7 +499,7 @@ export function buildScenarioComparison(input: {
   current: DashboardSnapshot
   scenario: ProjectionParameters
 }): ScenarioComparison {
-  const netWorth = calculateNetWorth({ assets: input.data.assets, liabilities: input.data.liabilities })
+  const netWorth = calculateNetWorth({ assets: input.data.assets })
   const results = emptyFreedomTime()
   const deltas: Record<BudgetLevel, number | undefined> = {
     basic: undefined,
@@ -541,7 +521,6 @@ export function buildScenarioComparison(input: {
       reservedAssetAmount: input.scenario.reservedAssetAmount,
       currentAnnualAssetIncome: netWorth.annualAssetIncome,
       monthlyCashIncome: input.scenario.monthlyActiveIncome,
-      monthlyDebtPayment: calculateMonthlyDebtPayment(input.data.liabilities),
       annualBudgetExpense: calculateAnnualBudgetExpense(budget),
       annualReturn: calculateRealAnnualReturn(input.data.assets, input.data.settings.inflationRate),
     })
@@ -558,7 +537,6 @@ export function buildScenarioComparison(input: {
       basicAnnualBudget: calculateAnnualBudgetExpense(input.data.budgets.find((budget) => budget.level === 'basic') ?? zeroBudget('basic')),
       annualAssetIncome: netWorth.annualAssetIncome,
       annualReturn: calculateRealAnnualReturn(input.data.assets, input.data.settings.inflationRate),
-      monthlyDebtPayment: calculateMonthlyDebtPayment(input.data.liabilities),
     }),
   }
 }
@@ -571,35 +549,31 @@ function buildInsightMessages(
 ): InsightMessage[] {
   const messages: InsightMessage[] = []
   const basicSummary = summaries.find((summary) => summary.level === 'basic')
-  const latestMonthlySurplus = latestCashflow ? calculateMonthlySurplus(latestCashflow) : 0
+  const basicBudget = data.budgets.find((budget) => budget.level === 'basic')
+  const monthlyBudget = basicBudget ? calculateAnnualBudgetExpense(basicBudget) / 12 : 0
+  const latestMonthlySurplus = latestCashflow ? calculateMonthlySurplus(latestCashflow) - monthlyBudget : 0
 
   if (!basicSummary || basicSummary.annualBudgetExpense <= 0) {
     messages.push({ type: 'warning', title: '补齐基础预算', description: '先录入预算，才能判断自由等级' })
   }
 
   if (!latestCashflow) {
-    messages.push({ type: 'warning', title: '补录现金流', description: '先录入最近一个月现金流，才能推演达成时间' })
+    messages.push({ type: 'warning', title: '补录收入', description: '先录入持续性收入，才能推演达成时间' })
   } else if (latestMonthlySurplus <= 0) {
-    messages.push({ type: 'risk', title: '现金流结余不足', description: '当前月结余不为正，自然达成时间不可计算' })
+    messages.push({ type: 'risk', title: '预算后结余不足', description: '收入扣除基础预算后没有结余，自然达成时间不可计算' })
   }
 
   if (basicSummary && basicSummary.annualFundingGap > basicSummary.annualBudgetExpense * 0.5) {
     messages.push({ type: 'warning', title: '资产收益不足', description: '基础预算仍有较大年资金缺口' })
   }
 
-  const monthlyExpense = latestCashflow
-    ? latestCashflow.fixedExpense +
-      latestCashflow.dailyExpense +
-      latestCashflow.familyExpense +
-      latestCashflow.annualExpenseAllocated +
-      latestCashflow.durableCostAllocated
-    : 0
+  const monthlyExpense = monthlyBudget
   if (monthlyExpense > 0 && netWorth.disposableAssets < monthlyExpense * data.settings.emergencyFundMonths) {
     messages.push({ type: 'risk', title: '应急金偏低', description: `可支配资产不足 ${data.settings.emergencyFundMonths} 个月支出` })
   }
 
   if (messages.length === 0) {
-    messages.push({ type: 'success', title: '持续积累中', description: '预算、现金流和资产数据已形成可推演闭环' })
+    messages.push({ type: 'success', title: '持续积累中', description: '预算、收入和资产数据已形成可推演闭环' })
   }
 
   return messages.slice(0, 4)
@@ -611,13 +585,12 @@ function buildScenarioBottleneck(input: {
   basicAnnualBudget: number
   annualAssetIncome: number
   annualReturn: number
-  monthlyDebtPayment: number
 }): InsightMessage {
-  const monthlySurplus = input.scenario.monthlyActiveIncome - input.basicAnnualBudget / 12 - input.monthlyDebtPayment
+  const monthlySurplus = input.scenario.monthlyActiveIncome - input.basicAnnualBudget / 12
   const annualFundingGap = Math.max(input.basicAnnualBudget - input.annualAssetIncome, 0)
 
   if (monthlySurplus <= 0) {
-    return { type: 'risk', title: '结余不足', description: '先让现金收入覆盖基础预算和负债月供，推演才有自然达成路径' }
+    return { type: 'risk', title: '结余不足', description: '先让现金收入覆盖基础预算，推演才有自然达成路径' }
   }
   if (input.basicAnnualBudget > 0 && annualFundingGap > input.basicAnnualBudget * 0.5) {
     return { type: 'warning', title: '资产收益不足', description: '基础自由仍依赖较长时间的资产积累' }

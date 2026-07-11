@@ -23,12 +23,12 @@
 
     <section v-if="isEmpty" class="panel empty-state">
       <div class="row-title">待录入基础数据</div>
-      <p class="row-description">补齐目标、预算、资产负债和最近现金流后，就能看到第一份自由度报告。</p>
+      <p class="row-description">补齐资产、预算和收入后，就能看到第一份自由度报告。</p>
     </section>
 
     <section class="metric-grid">
       <article class="metric-card">
-        <div class="metric-label">收益型净资产</div>
+        <div class="metric-label">收益型资产</div>
         <div class="metric-value">{{ formatCurrency(snapshot.incomeGeneratingNetWorth) }}</div>
       </article>
       <article class="metric-card">
@@ -79,7 +79,7 @@
       <div class="section-label">最近更新</div>
       <div class="setting-row">
         <div>
-          <div class="row-title">最近月结余</div>
+          <div class="row-title">基础预算后月结余</div>
           <div class="row-description">{{ latestMonthLabel }}</div>
         </div>
         <div class="row-side">{{ formatCurrency(snapshot.latestMonthlySurplus) }}</div>
@@ -148,7 +148,7 @@ const budgetRows = computed(() =>
   }),
 )
 const generatedCashflow = computed(() => buildMonthlyCashflowFromRecurring(props.data.recurringCashflows, currentMonth()))
-const latestMonthLabel = computed(() => generatedCashflow.value?.month ?? '还没有持续性现金流')
+const latestMonthLabel = computed(() => generatedCashflow.value?.month ?? '还没有持续性收入')
 const updatedAtLabel = computed(() => new Date(props.snapshot.updatedAt).toLocaleString('zh-CN'))
 const isEmpty = computed(() => {
   const nonCoreAssets = props.data.assets.filter((asset) => !['现金余额', '公积金余额'].includes(asset.name))
