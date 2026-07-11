@@ -32,7 +32,3 @@ Vitest uses globals, jsdom, and `tests/setup.ts`. Name tests `*.test.ts` and pla
 ## Commit & Pull Request Guidelines
 
 History favors short subject lines such as `支持年终奖, 移除无效target`; write concise, imperative commits describing one logical change. Before opening a PR, run `npm test` and `npm run build`. PRs should explain user-visible behavior, identify affected calculations or data migrations, link the relevant issue/spec, and include mobile screenshots for UI changes. Call out schema or `localStorage` compatibility risks explicitly.
-
-## Documentation & Agent Workflow
-
-During exploratory knowledge-base edits, modify only the requested source document. Do not update `2-build/`, `3-wiki/`, or compilation-state maps unless the user explicitly asks to compile, synchronize, or finalize the material.
