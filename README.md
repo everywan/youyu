@@ -18,7 +18,7 @@
 
 ## 隐私与数据安全
 
-所有财务数据都只在当前浏览器中处理，并保存在浏览器的 `localStorage`。本项目没有账号系统、云端数据库或业务数据上传接口。部署方可以启用 GoatCounter，仅统计网站被打开的次数；统计固定使用 `/open`，不会上报实际页面路径、页面标题或来源页面。
+所有财务数据都只在当前浏览器中处理，并保存在浏览器的 `localStorage`。本项目没有账号系统、云端数据库或业务数据上传接口。网站使用 GoatCounter 统计访问情况，但不会向其发送任何财务数据。
 
 你可以在「设置」中：
 
@@ -89,15 +89,16 @@ npm run build
 
 构建产物会输出到 `dist/`，该目录不提交到仓库。
 
-## 访问次数统计（可选）
+## 访问统计
 
-在 GoatCounter 创建站点后，构建时设置统计端点：
+网站通过 GoatCounter 官方脚本统计访问情况。GitHub Pages 的统计端点配置在 `.github/workflows/deploy.yml` 的 Build 步骤中：
 
-```bash
-VITE_GOATCOUNTER_ENDPOINT=https://你的站点代码.goatcounter.com/count npm run build
+```yaml
+env:
+  VITE_GOATCOUNTER_ENDPOINT: https://youyu.goatcounter.com/count
 ```
 
-未设置该变量时不会加载 GoatCounter。启用后，每次打开或刷新网站都会记为一次 `/open`；应用内页面切换不会重复统计，也不会发送实际页面路径、标题或来源页面。
+更换 GoatCounter 站点时，修改这里的地址即可。本地开发不需要统计；如需验证统计，可以在启动命令前临时设置同名环境变量。
 
 ## 页面功能
 

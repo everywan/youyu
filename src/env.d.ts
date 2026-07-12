@@ -1,11 +1,3 @@
-interface ImportMetaEnv {
-  readonly VITE_GOATCOUNTER_ENDPOINT?: string
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv
-}
-
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
 
