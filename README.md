@@ -1,274 +1,72 @@
 # 有余
 
-[![Deploy to GitHub Pages](https://github.com/everywan/youyu/actions/workflows/deploy.yml/badge.svg)](https://github.com/everywan/youyu/actions/workflows/deploy.yml)
-[![Website](https://img.shields.io/badge/website-online-2ea44f?logo=githubpages&logoColor=white)](https://everywan.github.io/youyu/)
+[![Deploy](https://github.com/everywan/youyu/actions/workflows/deploy.yml/badge.svg)](https://github.com/everywan/youyu/actions/workflows/deploy.yml)
+[![在线体验](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-everywan.github.io-2ea44f)](https://everywan.github.io/youyu/)
 [![License](https://img.shields.io/github/license/everywan/youyu)](LICENSE)
-[![Vue 3](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Analytics: GoatCounter](https://img.shields.io/badge/analytics-GoatCounter-7b5ea7)](https://www.goatcounter.com/)
 
-一个本地隐私优先、移动端优先的财务自由规划 App。
+一个隐私优先、移动端优先的财务自由规划工具。
 
-「有余」不是逐笔记账工具，也不提供投资建议。你只需要维护收益型与非收益型资产、包含全部持续支出的三档预算，以及非资产收入，应用就会帮你计算：
+维护资产、三档生活预算和持续收入后，「有余」可以帮助你了解：
 
-- 当前处于未自由、基础自由、标准自由还是高级自由
-- 年资产收益能覆盖多少生活预算
-- 按当前收支和收益率，预计何时达到各档财务自由
-- 哪些因素正在影响你的自由进度
+- 当前的财务自由等级
+- 资产收益对生活预算的覆盖程度
+- 按当前收支预计达到各档财务自由的时间
+- 收入、预算和收益率变化对目标的影响
 
-## 隐私与数据安全
+「有余」不是逐笔记账工具，也不提供投资建议。
 
-所有财务数据都只在当前浏览器中处理，并保存在浏览器的 `localStorage`。本项目没有账号系统、云端数据库或业务数据上传接口。网站使用 GoatCounter 统计访问情况，但不会向其发送任何财务数据。
+## 在线体验
 
-你可以在「设置」中：
+[https://everywan.github.io/youyu/](https://everywan.github.io/youyu/)
 
-- 生成完整的 JSON 备份并保存到本地
-- 粘贴此前导出的 JSON，在本地恢复数据
-- 清空当前浏览器内保存的全部数据
+## 隐私说明
 
-恢复数据前会校验备份版本和内容；校验失败不会覆盖现有数据。建议定期备份，清理浏览器数据、使用无痕模式或更换设备都可能导致本地数据丢失。
+财务数据只在当前浏览器中处理，并保存在 `localStorage`。项目没有账号系统、云端数据库或财务数据上传接口。
 
-> 隐私边界：以上说明针对本项目自身代码。浏览器扩展、设备环境，以及自行部署时额外加入的第三方脚本或服务，不受本项目控制。
+你可以在设置页导出或恢复 JSON 备份，也可以清空全部本地数据。清理浏览器数据、使用无痕模式或更换设备都可能造成数据丢失，建议定期备份。
 
-实现依据见 [docs/spec/mvp-h5-first-version-spec.md](docs/spec/mvp-h5-first-version-spec.md)。
+网站使用 GoatCounter 统计访问量，但不会发送财务数据。浏览器扩展、设备环境和自行部署时加入的第三方服务不在上述隐私承诺范围内。
 
-## 技术栈
+## 本地开发
 
-- Vue 3
-- TypeScript
-- Vite
-- Ant Design Vue
-- Vitest
-- 浏览器本地持久化：版本化 JSON 数据包
-
-## 本地运行
-
-先安装依赖：
+需要 Node.js 和 npm。
 
 ```bash
 npm install
-```
-
-启动开发环境：
-
-```bash
 npm run dev
 ```
 
-默认会监听：
+应用默认运行在 [http://127.0.0.1:5173/](http://127.0.0.1:5173/)。
 
-```text
-http://127.0.0.1:5173/
-```
-
-如果端口被占用，可以指定端口：
+常用命令：
 
 ```bash
-npm run dev -- --port 5174
-```
-
-## 常用命令
-
-运行单元测试：
-
-```bash
-npm test
-```
-
-开发时监听测试：
-
-```bash
+npm test          # 运行测试
+npm run build     # 类型检查并构建生产版本
 npm run test:watch
 ```
 
-生产构建：
+## 技术与结构
 
-```bash
-npm run build
-```
-
-构建产物会输出到 `dist/`，该目录不提交到仓库。
-
-## 访问统计
-
-网站通过 GoatCounter 官方脚本统计访问情况。GitHub Pages 的统计端点配置在 `.github/workflows/deploy.yml` 的 Build 步骤中：
-
-```yaml
-env:
-  VITE_GOATCOUNTER_ENDPOINT: https://youyu.goatcounter.com/count
-```
-
-更换 GoatCounter 站点时，修改这里的地址即可。本地开发不需要统计；如需验证统计，可以在启动命令前临时设置同名环境变量。
-
-## 页面功能
-
-应用是一个 H5 单页应用，底部有 4 个 Tab：
-
-- 首页：展示自由等级、基础覆盖率、预计达成时间、核心资产指标、三档自由进度、关键提醒和最近更新。三档自由进度会展示“资产收益 / 月”和对应档位“预算门槛 / 月”。
-- 录入：维护收益型资产、非收益型资产、三档预算和收入。房贷月供、房租、保险等所有持续支出都作为预算项维护；收入页只记录工资、公积金和其他非资产收入。
-- 推演：调整月收入，切换基础、舒适、理想生活预算，比较各档自由时间会提前还是推迟。推演使用所有收益型资产，按资产页每项年化收益率计算整体年化，并扣除设置页 CPI；每月按“非资产收入 + 资产收入 - 对应档位预算”滚动。推演不会覆盖真实数据。
-- 设置：维护 CPI、应急金月数等参数，导出 JSON 备份，恢复 JSON 数据，清空本地数据。
-
-首次进入时会先展示 5 页产品介绍，说明有余解决什么问题、如何定义三档财务自由、为什么不需要逐笔记账，以及最终可以得到哪些判断。用户可以逐页阅读，也可以跳过介绍直接进入初始设置。
-
-初始设置包含三步：三档生活预算、当前资产、持续性非资产收入。完成后生成第一份财务自由仪表盘；也可以选择“稍后填写”进入首页。产品介绍完成或跳过后会在本地记录状态，刷新页面不会重复展示。设置页“清空本地数据”会重置该状态并重新进入首次引导。
-
-## 代码结构
+项目使用 Vue 3、TypeScript、Vite、Ant Design Vue 和 Vitest。
 
 ```text
 src/
-  App.vue                         应用壳、底部 Tab、Repository 注入
-  main.ts                         Vue 入口
-  styles.css                      全局移动端样式
-  domain/
-    types.ts                      核心业务类型
-    calculations.ts               财务计算与推演逻辑
-  repositories/
-    AppDataRepository.ts          Repository 接口
-    LocalAppDataRepository.ts     localStorage 本地实现
-    defaultData.ts                默认数据包
-  pages/
-    HomePage.vue                  首页仪表盘
-    EntryPage.vue                 录入页
-    ScenarioPage.vue              推演页
-    SettingsPage.vue              设置页
-    OnboardingPage.vue            首次引导
-  utils/
-    format.ts                     金额、百分比、日期等格式化工具
-tests/
-  domain/                         核心财务公式测试
-  repositories/                   本地 Repository 测试
-  setup.ts                        Vitest 浏览器 API 测试环境
+  pages/          页面与交互
+  domain/         业务类型、财务计算与展示规则
+  repositories/   数据接口及 localStorage 实现
+  utils/          通用格式化工具
+tests/            与源码职责对应的测试
+docs/             产品需求与实现规范
 ```
 
-## 架构说明
+财务规则应放在 `src/domain/`，页面通过 Repository 读写数据，不直接访问 `localStorage`。修改财务公式或持久化规则时，请同步补充对应测试。
 
-代码按三层组织：
+更完整的产品与实现说明见：
 
-- View：`src/pages/*` 和 `src/App.vue`，负责展示、表单和交互。
-- Domain Service：`src/domain/calculations.ts`，负责所有财务公式、自由等级、支撑年限、达成时间和推演比较。
-- Repository：`src/repositories/*`，负责数据读取、保存、导入和导出。
+- [产品定义](docs/%E4%BA%A7%E5%93%81%E5%AE%9A%E4%B9%89.md)
+- [MVP 实现规范](docs/spec/mvp-h5-first-version-spec.md)
 
-页面组件不直接调用 `localStorage`。当前 MVP 使用 `LocalAppDataRepository`，后续接入 Go / MySQL / Redis 时，可以用 HTTP Repository 替换本地实现，尽量不改页面组件。
+## License
 
-## 本地数据
-
-数据保存在浏览器 `localStorage` 中，key 为：
-
-```text
-youyu.app-data.v1
-```
-
-数据包是版本化 JSON：
-
-```ts
-type AppDataPackage = {
-  schemaVersion: 1
-  onboardingCompleted: boolean
-  assets: Asset[]
-  budgets: Budget[]
-  oneTimeCashflows: OneTimeCashflow[]
-  recurringCashflows: RecurringCashflow[]
-  settings: AppSettings
-  updatedAt: string
-}
-```
-
-预算默认使用子项录入：
-
-```ts
-type Budget = {
-  monthlyFixed: number
-  fixedExpenseMode: 'items'
-  fixedExpenseItems: FixedExpenseItem[]
-  annualLargeExpense: number
-  annualReserve: number
-}
-
-type FixedExpenseItem = {
-  category:
-    | 'dining'
-    | 'rent_mortgage'
-    | 'commute'
-    | 'utilities'
-    | 'communications'
-    | 'healthcare'
-    | 'insurance'
-    | 'family_support'
-    | 'leisure_shopping'
-    | 'pocket_money'
-    | 'custom'
-  name?: string
-  amount: number
-}
-```
-
-预算页默认只展示三档汇总行，基础 / 舒适 / 理想默认月总支出为 `4000 / 8000 / 10000`。点击汇总行后展开明细，明细默认包含一个“汇总项”和餐饮、房租/房贷、通勤、水电燃气、通讯网络、医疗健康、保险、家庭/赡养、娱乐购物、零花钱。所有明细项都可删除，用户也可以追加任意自定义 `key + value`，`monthlyFixed` 会由所有子项自动汇总为月总支出。旧版总固定支出、日常、家庭、耐用预算字段会在加载时迁移为自定义子项，MVP 页面不再单独展示这些字段。
-
-加载旧的 `monthlyCashflows` 数据包时，会自动迁移为单月有效的 `recurringCashflows` 规则，并补齐缺失的现金流拆分字段。
-
-设置页可以导出完整 JSON，也可以粘贴 JSON 恢复。恢复时会校验版本、必要字段和非负金额；失败时不会覆盖当前数据。
-
-## 核心计算
-
-主要计算集中在 `src/domain/calculations.ts`：
-
-- `calculateNetWorth`：收益型资产总额、可支配资产、不可动用资产、预留资产、年资产收益。非收益资产只记录用户输入的金额，不参与收益与自由判断。
-- `calculateBudgetSummary`：年预算支出、年资产收益覆盖率、年资金缺口。
-- `calculateSupportYears`：支撑年限和边界状态。
-- `calculateFreedomLevel`：基础、标准、高级自由等级判断。
-- `projectFreedomTime`：用所有收益型资产按整体实际年化按月迭代预计达成时间。
-- `calculateSalaryIncomeEstimate`：按月工资、公积金比例和年度综合所得税表折算估算工资收入。
-- `buildMonthlyCashflowFromRecurring`：把持续性现金流规则自动生成指定月份的现金流。
-- `applyOneTimeCashflowToAssets`：把一次性现金流金额合并到同名同类型资产。
-- `calculateDashboard`：把原始数据汇总为首页快照。
-- `buildScenarioComparison`：推演页场景对比和瓶颈判断。
-
-工资收入估算口径：
-
-- 月应税收入 = 月工资 - 个人公积金 - 5000，个税按年度综合所得税表折算到月。
-- 公积金比例默认 12%，城市基数上限内置上海、广州、北京、深圳、苏州、南京、杭州、天津、武汉、成都、重庆、西安、长沙，用户可以手动改基数上限。
-- 月公积金入账按个人 + 单位两份估算，税后工资会扣除个人公积金和个税。
-- 工资规则保存后，会把本月税后工资加入资产里的 `现金余额`，把公积金入账加入 `公积金余额`。
-- 工资规则支持年终奖，可录入总额或到手额、发放月份；当前 MVP 总额按到手额处理，不额外估算年终奖税。
-- 年终奖会在发放月份每年自动加入一次 `现金余额`，并在该月现金流推演里计入主动收入。
-
-金额展示会自动切换单位：千元以上显示 `k`，万元以上显示 `w`，例如 `¥8.9k`、`¥42.6w`。
-
-## 测试覆盖
-
-当前测试覆盖：
-
-- 收益型资产计算
-- 可支配资产计算
-- 年预算支出
-- 年资产收益覆盖率
-- 支撑年限边界
-- 自由等级判断
-- 月结余小于等于 0 时不可达
-- 80 年内仍未达标时不可达
-- 推演变量变化后的时间差
-- 工资到手收入和公积金估算
-- 持续性现金流自动生成当月现金流
-- 一次性现金流合并到资产
-- 金额 k/w 单位格式化
-- 本地数据保存、导出、导入和恢复失败保护
-
-运行：
-
-```bash
-npm test
-```
-
-## 开发建议
-
-- 新增或修改财务公式时，先补 `tests/domain/*`。
-- 新增持久化规则时，先补 `tests/repositories/*`。
-- 页面不要直接读写 `localStorage`，通过 Repository 或上层传入的保存函数更新数据。
-- 金额字段默认非负；月份格式使用 `YYYY-MM`。
-- 同一个月份只保留一条现金流记录，重复保存视为更新。
-- 资产年化收益率在每个资产项里维护；全局 CPI 默认 1%，可以在设置页调整。
-
-## 开源协议
-
-本项目基于 [MIT License](LICENSE) 开源。你可以自由使用、复制、修改、合并、发布、分发、再许可或销售本项目的副本，但需保留原始版权声明和许可声明。
+[MIT](LICENSE)
