@@ -1,5 +1,12 @@
 # 有余
 
+[![Deploy to GitHub Pages](https://github.com/everywan/youyu/actions/workflows/deploy.yml/badge.svg)](https://github.com/everywan/youyu/actions/workflows/deploy.yml)
+[![Website](https://img.shields.io/badge/website-online-2ea44f?logo=githubpages&logoColor=white)](https://everywan.github.io/youyu/)
+[![License](https://img.shields.io/github/license/everywan/youyu)](LICENSE)
+[![Vue 3](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Analytics: GoatCounter](https://img.shields.io/badge/analytics-GoatCounter-7b5ea7)](https://www.goatcounter.com/)
+
 一个本地隐私优先、移动端优先的财务自由规划 App。
 
 「有余」不是逐笔记账工具，也不提供投资建议。你只需要维护收益型与非收益型资产、包含全部持续支出的三档预算，以及非资产收入，应用就会帮你计算：
@@ -11,7 +18,7 @@
 
 ## 隐私与数据安全
 
-所有财务数据都只在当前浏览器中处理，并保存在浏览器的 `localStorage`。本项目没有账号系统、云端数据库、统计 SDK 或数据上传接口，应用本身不会把你的数据发送到任何服务器。
+所有财务数据都只在当前浏览器中处理，并保存在浏览器的 `localStorage`。本项目没有账号系统、云端数据库或业务数据上传接口。部署方可以启用 GoatCounter，仅统计网站被打开的次数；统计固定使用 `/open`，不会上报实际页面路径、页面标题或来源页面。
 
 你可以在「设置」中：
 
@@ -81,6 +88,16 @@ npm run build
 ```
 
 构建产物会输出到 `dist/`，该目录不提交到仓库。
+
+## 访问次数统计（可选）
+
+在 GoatCounter 创建站点后，构建时设置统计端点：
+
+```bash
+VITE_GOATCOUNTER_ENDPOINT=https://你的站点代码.goatcounter.com/count npm run build
+```
+
+未设置该变量时不会加载 GoatCounter。启用后，每次打开或刷新网站都会记为一次 `/open`；应用内页面切换不会重复统计，也不会发送实际页面路径、标题或来源页面。
 
 ## 页面功能
 

@@ -37,6 +37,8 @@ jobs:
 
       - name: Build
         run: npm run build -- --base "${{ steps.pages.outputs.base_path }}/"
+        env:
+          VITE_GOATCOUNTER_ENDPOINT: https://youyu.goatcounter.com/count
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
